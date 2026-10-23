@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #FAF8F5;
+  --color-canvas-subtle: #F3EFE9;
+  --color-canvas-muted: #EBE5DB;
+  --color-canvas-border: #DCD4C7;
+
+  --color-ink: #211D18;
+  --color-ink-muted: #6E6659;
+  --color-ink-subtle: #988F80;
+
+  --color-pine-50: #F1F6F3;
+  --color-pine-100: #E0EDE5;
+  --color-pine-200: #C2DCCB;
+  --color-pine-500: #2C6348;
+  --color-pine-600: #23523B;
+  --color-pine-700: #1A3E2C;
+  --color-pine-800: #122B1E;
+
+  --color-amber-50: #FDF9F0;
+  --color-amber-100: #F9F1DC;
+  --color-amber-500: #C6771F;
+  --color-amber-700: #884A0A;
+
+  --color-terracotta-50: #FDF5F2;
+  --color-terracotta-100: #FAE8E1;
+  --color-terracotta-500: #C14F33;
+  --color-terracotta-700: #7E2D18;
+
+  --color-locked-surface: #F1F3F5;
+  --color-locked-border: #D4D8DC;
+  --color-locked-text: #636A73;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Accessible focus indicators: 2px offset ring */
+  :focus-visible {
+    outline: 2px solid var(--color-pine-600);
+    outline-offset: 2px;
+  }
+
+  /* Support prefers-reduced-motion globally */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
