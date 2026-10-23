@@ -1,227 +1,339 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useUser } from '@clerk/nextjs';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ChecklistRow } from '@/components/ui/checklist-row';
 import { Dialog } from '@/components/ui/dialog';
+import { EmptyState, LoadingSkeleton } from '@/components/ui/state-views';
+import { syncUserProfile } from '@/server/actions/profile';
 import {
-  EmptyState,
-  ErrorState,
-  LockedEventBanner,
-  ReconnectingBanner,
-} from '@/components/ui/state-views';
-import { Tent, Users, Plus, CheckCircle2 } from 'lucide-react';
+  Calendar,
+  MapPin,
+  Lock,
+  Plus,
+  KeyRound,
+  ChevronRight,
+  Compass,
+} from 'lucide-react';
+import type { EventStatus } from '@/types/database';
 
-interface ChecklistItem {
+interface DashboardEvent {
   id: string;
   title: string;
-  notes?: string;
-  quantity?: string;
-  assigneeName?: string;
-  isCompleted: boolean;
-  isLocked: boolean;
+  description?: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  status: EventStatus;
+  role: 'owner' | 'participant';
+  itemCount: number;
+  completedItemCount: number;
 }
 
-export default function DesignSystemPage() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [items, setItems] = useState<ChecklistItem[]>([
+export default function DashboardPage() {
+  const { user, isLoaded } = useUser();
+  const [activeTab, setActiveTab] = useState<'active' | 'archived' | 'completed'>('active');
+  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Sample initial event data for dashboard skeleton view
+  const [events, setEvents] = useState<DashboardEvent[]>([
     {
-      id: '1',
-      title: 'Waterproof 4-Person Tent',
-      notes: 'Make sure rain fly and stakes are packed in bag',
-      quantity: '1x',
-      assigneeName: 'Alex M.',
-      isCompleted: true,
-      isLocked: false,
+      id: 'evt-1',
+      title: 'High Sierra Alpine Trek',
+      description: 'Weekend camping and gear distribution at Lake Aloha.',
+      location: 'Desolation Wilderness, CA',
+      startDate: 'Nov 14, 2026',
+      endDate: 'Nov 16, 2026',
+      status: 'active',
+      role: 'owner',
+      itemCount: 14,
+      completedItemCount: 9,
     },
     {
-      id: '2',
-      title: 'Camp Stove & Propane Canister',
-      notes: 'Check fuel level before departure',
-      quantity: '2 tanks',
-      assigneeName: 'Sam K.',
-      isCompleted: false,
-      isLocked: false,
+      id: 'evt-2',
+      title: 'Pacific Coast Kayak & Camp',
+      description: 'Coastal gear checklist and shared kitchen setup.',
+      location: 'Point Reyes, CA',
+      startDate: 'Oct 02, 2026',
+      endDate: 'Oct 04, 2026',
+      status: 'completed',
+      role: 'participant',
+      itemCount: 18,
+      completedItemCount: 18,
     },
     {
-      id: '3',
-      title: 'First Aid Kit & Blister Bandages',
-      notes: 'Stored in red emergency pouch',
-      quantity: '1 kit',
-      assigneeName: 'Jordan T.',
-      isCompleted: false,
-      isLocked: true, // Example locked row
+      id: 'evt-3',
+      title: 'Spring Desert Overlanding',
+      description: 'Anza-Borrego water tanks and vehicle tools.',
+      location: 'Borrego Springs, CA',
+      status: 'archived',
+      role: 'owner',
+      itemCount: 8,
+      completedItemCount: 4,
     },
   ]);
 
-  const toggleItem = (id: string, nextState: boolean) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, isCompleted: nextState } : item))
+  // Trusted profile synchronization on authenticated session load
+  useEffect(() => {
+    if (user?.id) {
+      setIsSyncing(true);
+      syncUserProfile()
+        .catch((err) => console.error('Background profile sync error:', err))
+        .finally(() => setIsSyncing(false));
+    }
+  }, [user?.id]);
+
+  const filteredEvents = events.filter((e) => e.status === activeTab);
+
+  if (!isLoaded) {
+    return (
+      <AppShell activeTab="events">
+        <LoadingSkeleton count={4} />
+      </AppShell>
     );
-  };
+  }
 
   return (
     <AppShell
       activeTab="events"
-      eventTitle="High Sierra Weekend Trek"
-      onNewAction={() => setIsDialogOpen(true)}
-      onShareAction={() => alert('Invite code copied to clipboard!')}
+      onNewAction={() => setIsCreateDialogOpen(true)}
     >
-      <div className="flex flex-col gap-8">
-        {/* Event Header Card */}
-        <section className="bg-white rounded-2xl p-5 border border-canvas-border shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div className="flex flex-col gap-6">
+        {/* Welcome Banner */}
+        <section className="bg-white rounded-2xl p-5 sm:p-6 border border-canvas-border shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-ink flex items-center gap-2">
+                <span>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</span>
+              </h1>
+              <p className="text-sm text-ink-muted mt-1">
+                Plan trips, invite friends, and coordinate shared packing lists in one place.
+              </p>
+            </div>
             <div className="flex items-center gap-2">
-              <Badge variant="active">Active Trip</Badge>
-              <Badge variant="completed">Permanent Lock Verified</Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsJoinDialogOpen(true)}
+              >
+                <KeyRound className="w-3.5 h-3.5 mr-1.5" />
+                Join with Code
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                New Event
+              </Button>
             </div>
-            <span className="text-xs text-ink-muted">Created Oct 24 • 8 participants</span>
-          </div>
-          <p className="text-sm text-ink-muted leading-relaxed">
-            Coordinating shared gear and base camp kitchen essentials for the upcoming mountain trip.
-          </p>
-          <div className="mt-4 pt-3 border-t border-canvas-border flex items-center justify-between text-xs text-ink-muted">
-            <div className="flex items-center gap-1.5 font-medium">
-              <Tent className="w-4 h-4 text-pine-600" />
-              <span>Base Camp Gear</span>
-            </div>
-            <div className="flex items-center gap-1.5 font-medium">
-              <Users className="w-4 h-4 text-pine-600" />
-              <span>4 Assignees</span>
-            </div>
           </div>
         </section>
 
-        {/* Locked Event Warning Banner */}
-        <LockedEventBanner />
+        {/* Status Filter Tabs */}
+        <div className="flex items-center gap-2 border-b border-canvas-border pb-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('active')}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+              activeTab === 'active'
+                ? 'bg-canvas-subtle text-pine-700'
+                : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            Active
+            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-white border border-canvas-border">
+              {events.filter((e) => e.status === 'active').length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('completed')}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+              activeTab === 'completed'
+                ? 'bg-canvas-subtle text-pine-700'
+                : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            Completed
+            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-white border border-canvas-border">
+              {events.filter((e) => e.status === 'completed').length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('archived')}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+              activeTab === 'archived'
+                ? 'bg-canvas-subtle text-pine-700'
+                : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            Archived
+            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-white border border-canvas-border">
+              {events.filter((e) => e.status === 'archived').length}
+            </span>
+          </button>
+        </div>
 
-        {/* Interactive Checklist Section */}
-        <section aria-labelledby="section-checklist">
-          <div className="flex items-center justify-between mb-3">
-            <h2 id="section-checklist" className="text-lg font-bold text-ink flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-pine-600" />
-              <span>Checklist Items (Mobile-First Touch Rows)</span>
-            </h2>
-            <Button variant="secondary" size="sm" onClick={() => setIsDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add Item
-            </Button>
-          </div>
-
-          <div className="flex flex-col gap-2.5">
-            {items.map((item) => (
-              <ChecklistRow
-                key={item.id}
-                id={item.id}
-                title={item.title}
-                notes={item.notes}
-                quantity={item.quantity}
-                assigneeName={item.assigneeName}
-                isCompleted={item.isCompleted}
-                isEventLocked={item.isLocked}
-                onToggle={toggleItem}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Buttons Showcase */}
-        <section aria-labelledby="section-buttons" className="bg-white rounded-2xl p-5 border border-canvas-border shadow-xs">
-          <h2 id="section-buttons" className="text-base font-bold text-ink mb-3">
-            Button Variants (Touch Targets ≥ 44px)
-          </h2>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button variant="primary">Primary Pine</Button>
-            <Button variant="secondary">Secondary Canvas</Button>
-            <Button variant="outline">Outline</Button>
-            <Button variant="destructive">Destructive</Button>
-            <Button variant="ghost">Ghost</Button>
-            <Button variant="primary" isLoading>
-              Saving
-            </Button>
-          </div>
-        </section>
-
-        {/* Form Fields Showcase */}
-        <section aria-labelledby="section-fields" className="bg-white rounded-2xl p-5 border border-canvas-border shadow-xs">
-          <h2 id="section-fields" className="text-base font-bold text-ink mb-3">
-            Form Fields & Inline Validation
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Item Name"
-              placeholder="e.g. Water Purification Tablets"
-              defaultValue="Portable Water Filter"
-              helperText="Specify brand or capacity if relevant"
-            />
-            <Input
-              label="Quantity"
-              placeholder="e.g. 2 boxes"
-              defaultValue="Invalid quantity"
-              error="Quantity must be greater than zero"
-            />
-          </div>
-        </section>
-
-        {/* Reusable State Views */}
-        <section aria-labelledby="section-states">
-          <h2 id="section-states" className="text-base font-bold text-ink mb-2">
-            Feedback & Boundary States
-          </h2>
+        {/* Event List */}
+        {filteredEvents.length === 0 ? (
           <EmptyState
-            title="No Personal Templates Yet"
-            description="Create custom packing lists to reuse for camping, hiking, or road trips."
-            actionLabel="Create First Template"
-            onAction={() => alert('New Template Triggered')}
+            title={`No ${activeTab} outings`}
+            description={
+              activeTab === 'active'
+                ? 'You have no upcoming outings scheduled. Create one or join an existing trip.'
+                : activeTab === 'completed'
+                ? 'Completed trips are permanently locked for reference.'
+                : 'Archived trips are stored here safely.'
+            }
+            actionLabel={activeTab === 'active' ? 'Create an Event' : undefined}
+            onAction={activeTab === 'active' ? () => setIsCreateDialogOpen(true) : undefined}
           />
-          <ErrorState
-            title="Connection Interrupted"
-            message="Could not synchronize recent checklist changes. Please check your connection."
-            onRetry={() => alert('Retrying sync...')}
-          />
-          <ReconnectingBanner />
-        </section>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filteredEvents.map((event) => {
+              const progressPct =
+                event.itemCount > 0
+                  ? Math.round((event.completedItemCount / event.itemCount) * 100)
+                  : 0;
+
+              return (
+                <div
+                  key={event.id}
+                  className="group bg-white rounded-2xl p-4 sm:p-5 border border-canvas-border shadow-2xs hover:border-ink-subtle transition-all flex flex-col gap-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="text-lg font-bold text-ink truncate group-hover:text-pine-700 transition-colors">
+                          {event.title}
+                        </h2>
+                        {event.status === 'completed' && (
+                          <Badge variant="completed">Locked</Badge>
+                        )}
+                        <Badge variant="neutral">
+                          {event.role === 'owner' ? 'Owner' : 'Participant'}
+                        </Badge>
+                      </div>
+                      {event.description && (
+                        <p className="text-xs sm:text-sm text-ink-muted line-clamp-1">
+                          {event.description}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-ink-subtle group-hover:text-ink group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </div>
+
+                  {/* Metadata Row */}
+                  <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-ink-muted pt-2 border-t border-canvas-border/60">
+                    {event.location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-pine-600" />
+                        <span>{event.location}</span>
+                      </span>
+                    )}
+                    {event.startDate && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-pine-600" />
+                        <span>
+                          {event.startDate}
+                          {event.endDate ? ` – ${event.endDate}` : ''}
+                        </span>
+                      </span>
+                    )}
+                    <span className="ml-auto font-medium text-ink">
+                      {event.completedItemCount}/{event.itemCount} items packed ({progressPct}%)
+                    </span>
+                  </div>
+
+                  {/* Visual Progress Bar */}
+                  <div className="w-full h-1.5 rounded-full bg-canvas-subtle overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        event.status === 'completed' ? 'bg-locked-badge' : 'bg-pine-600'
+                      }`}
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Accessible Dialog */}
+      {/* Join Event Modal */}
       <Dialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        title="Add Checklist Item"
-        description="Add a new required item to the outing checklist."
+        isOpen={isJoinDialogOpen}
+        onClose={() => setIsJoinDialogOpen(false)}
+        title="Join Outing with Code"
+        description="Enter the 8-character invite code provided by the trip organizer."
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="ghost" onClick={() => setIsJoinDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               variant="primary"
               onClick={() => {
-                setItems((prev) => [
-                  ...prev,
-                  {
-                    id: String(Date.now()),
-                    title: 'New Outdoor Gear Item',
-                    quantity: '1x',
-                    isCompleted: false,
-                    isLocked: false,
-                  },
-                ]);
-                setIsDialogOpen(false);
+                if (!inviteCodeInput.trim()) return;
+                alert(`Joining event with code: ${inviteCodeInput.toUpperCase()}`);
+                setIsJoinDialogOpen(false);
+                setInviteCodeInput('');
               }}
             >
-              Add Item
+              Join Event
             </Button>
           </>
         }
       >
-        <div className="flex flex-col gap-3 py-1">
-          <Input label="Item Title" placeholder="e.g. Sleeping Bag (-5°C rating)" required />
-          <Input label="Quantity" placeholder="e.g. 1 per person" />
-          <Input label="Notes" placeholder="Optional notes for participants" />
+        <div className="py-2">
+          <Input
+            label="Invite Code"
+            placeholder="e.g. SIERRA26"
+            value={inviteCodeInput}
+            onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+            required
+            autoFocus
+          />
+        </div>
+      </Dialog>
+
+      {/* Create Event Modal */}
+      <Dialog
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        title="Plan New Outing"
+        description="Create a private trip space and start assembling your shared packing list."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setIsCreateDialogOpen(false);
+              }}
+            >
+              Create Outing
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3.5 py-1">
+          <Input label="Trip Name" placeholder="e.g. Yosemite Fall Campout" required />
+          <Input label="Destination / Location" placeholder="e.g. Tuolumne Meadows, CA" />
+          <Input label="Short Description" placeholder="Gear and supplies coordination" />
         </div>
       </Dialog>
     </AppShell>

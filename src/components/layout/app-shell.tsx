@@ -1,13 +1,16 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { UserButton, SignInButton, useUser } from '@clerk/nextjs';
 import { cn } from '@/lib/utils';
 import {
   Compass,
   Calendar,
   Layers,
-  User,
   Plus,
   Share2,
+  LogIn,
 } from 'lucide-react';
 
 export interface AppShellProps {
@@ -25,6 +28,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   onNewAction,
   onShareAction,
 }) => {
+  const { isSignedIn } = useUser();
+
   return (
     <div className="min-h-screen flex flex-col bg-canvas text-ink">
       {/* Top Header */}
@@ -66,8 +71,8 @@ export const AppShell: React.FC<AppShellProps> = ({
             </Link>
           </nav>
 
-          {/* Header Actions */}
-          <div className="flex items-center gap-2">
+          {/* Header Actions & Auth */}
+          <div className="flex items-center gap-2.5">
             {onShareAction && (
               <button
                 type="button"
@@ -87,6 +92,27 @@ export const AppShell: React.FC<AppShellProps> = ({
                 <Plus className="w-4 h-4" />
                 <span>New Item</span>
               </button>
+            )}
+
+            {/* Clerk Authentication Controls */}
+            {isSignedIn ? (
+              <UserButton
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: 'w-8 h-8 rounded-full border border-canvas-border',
+                  },
+                }}
+              />
+            ) : (
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-pine-600 text-white text-xs sm:text-sm font-medium hover:bg-pine-700 transition-colors"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </button>
+              </SignInButton>
             )}
           </div>
         </div>
