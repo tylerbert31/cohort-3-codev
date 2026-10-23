@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
@@ -10,87 +11,129 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog } from '@/components/ui/dialog';
 import { EmptyState, LoadingSkeleton } from '@/components/ui/state-views';
 import { syncUserProfile } from '@/server/actions/profile';
+import { createEventAction, listUserEventsAction } from '@/server/actions/events';
+import { joinEventAction } from '@/server/actions/invitations';
 import {
   Calendar,
   MapPin,
-  Lock,
   Plus,
   KeyRound,
   ChevronRight,
-  Compass,
 } from 'lucide-react';
-import type { EventStatus } from '@/types/database';
-
-interface DashboardEvent {
-  id: string;
-  title: string;
-  description?: string;
-  location?: string;
-  startDate?: string;
-  endDate?: string;
-  status: EventStatus;
-  role: 'owner' | 'participant';
-  itemCount: number;
-  completedItemCount: number;
-}
+import type { Event, EventStatus } from '@/types/database';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, isLoaded } = useUser();
   const [activeTab, setActiveTab] = useState<'active' | 'archived' | 'completed'>('active');
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [inviteCodeInput, setInviteCodeInput] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
-  // Sample initial event data for dashboard skeleton view
-  const [events, setEvents] = useState<DashboardEvent[]>([
-    {
-      id: 'evt-1',
-      title: 'High Sierra Alpine Trek',
-      description: 'Weekend camping and gear distribution at Lake Aloha.',
-      location: 'Desolation Wilderness, CA',
-      startDate: 'Nov 14, 2026',
-      endDate: 'Nov 16, 2026',
-      status: 'active',
-      role: 'owner',
-      itemCount: 14,
-      completedItemCount: 9,
-    },
-    {
-      id: 'evt-2',
-      title: 'Pacific Coast Kayak & Camp',
-      description: 'Coastal gear checklist and shared kitchen setup.',
-      location: 'Point Reyes, CA',
-      startDate: 'Oct 02, 2026',
-      endDate: 'Oct 04, 2026',
-      status: 'completed',
-      role: 'participant',
-      itemCount: 18,
-      completedItemCount: 18,
-    },
-    {
-      id: 'evt-3',
-      title: 'Spring Desert Overlanding',
-      description: 'Anza-Borrego water tanks and vehicle tools.',
-      location: 'Borrego Springs, CA',
-      status: 'archived',
-      role: 'owner',
-      itemCount: 8,
-      completedItemCount: 4,
-    },
-  ]);
+  // Form state for creating outing
+  const [newTitle, setNewTitle] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
-  // Trusted profile synchronization on authenticated session load
+  // Events grouped by status
+  const [eventsData, setEventsData] = useState<{
+    active: Event[];
+    archived: Event[];
+    completed: Event[];
+  }>({
+    active: [],
+    archived: [],
+    completed: [],
+  });
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+
+  // Load user events
+  const loadEvents = async () => {
+    try {
+      const res = await listUserEventsAction();
+      if (res.success && res.data) {
+        setEventsData(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load events:', err);
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
+
+  // Trusted profile synchronization on session load + fetch events
   useEffect(() => {
     if (user?.id) {
-      setIsSyncing(true);
       syncUserProfile()
-        .catch((err) => console.error('Background profile sync error:', err))
-        .finally(() => setIsSyncing(false));
+        .then(() => loadEvents())
+        .catch((err) => {
+          console.error('Background profile sync error:', err);
+          loadEvents();
+        });
+    } else if (isLoaded) {
+      setIsLoadingEvents(false);
     }
-  }, [user?.id]);
+  }, [user?.id, isLoaded]);
 
-  const filteredEvents = events.filter((e) => e.status === activeTab);
+  const currentTabEvents = eventsData[activeTab];
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) return;
+
+    setIsCreating(true);
+    setCreateError(null);
+
+    try {
+      const res = await createEventAction({
+        title: newTitle.trim(),
+        location: newLocation.trim() || undefined,
+        description: newDescription.trim() || undefined,
+      });
+
+      if (res.success && res.data) {
+        setIsCreateDialogOpen(false);
+        setNewTitle('');
+        setNewLocation('');
+        setNewDescription('');
+        router.push(`/events/${res.data.event.id}`);
+      } else {
+        setCreateError(res.error || 'Failed to create outing.');
+      }
+    } catch {
+      setCreateError('An error occurred creating the outing.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleJoinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = inviteCodeInput.trim().toUpperCase();
+    if (!code) return;
+
+    setIsJoining(true);
+    setJoinError(null);
+
+    try {
+      const res = await joinEventAction(code);
+      if (res.success && res.data) {
+        setIsJoinDialogOpen(false);
+        setInviteCodeInput('');
+        router.push(`/events/${res.data.eventId}`);
+      } else {
+        setJoinError(res.error || 'Invalid or expired invite code.');
+      }
+    } catch {
+      setJoinError('Failed to join outing. Please check the code.');
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   if (!isLoaded) {
     return (
@@ -121,15 +164,21 @@ export default function DashboardPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsJoinDialogOpen(true)}
+                onClick={() => {
+                  setJoinError(null);
+                  setIsJoinDialogOpen(true);
+                }}
               >
-                <KeyRound className="w-3.5 h-3.5 mr-1.5" />
+                <KeyRound className="w-3.5 h-3.5 mr-1.5 text-pine-600" />
                 Join with Code
               </Button>
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={() => {
+                  setCreateError(null);
+                  setIsCreateDialogOpen(true);
+                }}
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 New Event
@@ -151,7 +200,7 @@ export default function DashboardPage() {
           >
             Active
             <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-white border border-canvas-border">
-              {events.filter((e) => e.status === 'active').length}
+              {eventsData.active.length}
             </span>
           </button>
           <button
@@ -165,7 +214,7 @@ export default function DashboardPage() {
           >
             Completed
             <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-white border border-canvas-border">
-              {events.filter((e) => e.status === 'completed').length}
+              {eventsData.completed.length}
             </span>
           </button>
           <button
@@ -179,13 +228,15 @@ export default function DashboardPage() {
           >
             Archived
             <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-white border border-canvas-border">
-              {events.filter((e) => e.status === 'archived').length}
+              {eventsData.archived.length}
             </span>
           </button>
         </div>
 
         {/* Event List */}
-        {filteredEvents.length === 0 ? (
+        {isLoadingEvents ? (
+          <LoadingSkeleton count={3} />
+        ) : currentTabEvents.length === 0 ? (
           <EmptyState
             title={`No ${activeTab} outings`}
             description={
@@ -200,33 +251,31 @@ export default function DashboardPage() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            {filteredEvents.map((event) => {
-              const progressPct =
-                event.itemCount > 0
-                  ? Math.round((event.completedItemCount / event.itemCount) * 100)
-                  : 0;
+            {currentTabEvents.map((evt) => {
+              const isEventOwner = evt.owner_id === user?.id;
 
               return (
-                <div
-                  key={event.id}
-                  className="group bg-white rounded-2xl p-4 sm:p-5 border border-canvas-border shadow-2xs hover:border-ink-subtle transition-all flex flex-col gap-3"
+                <Link
+                  key={evt.id}
+                  href={`/events/${evt.id}`}
+                  className="group bg-white rounded-2xl p-4 sm:p-5 border border-canvas-border shadow-2xs hover:border-ink-subtle transition-all flex flex-col gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h2 className="text-lg font-bold text-ink truncate group-hover:text-pine-700 transition-colors">
-                          {event.title}
+                          {evt.title}
                         </h2>
-                        {event.status === 'completed' && (
+                        {evt.status === 'completed' && (
                           <Badge variant="completed">Locked</Badge>
                         )}
                         <Badge variant="neutral">
-                          {event.role === 'owner' ? 'Owner' : 'Participant'}
+                          {isEventOwner ? 'Owner' : 'Participant'}
                         </Badge>
                       </div>
-                      {event.description && (
+                      {evt.description && (
                         <p className="text-xs sm:text-sm text-ink-muted line-clamp-1">
-                          {event.description}
+                          {evt.description}
                         </p>
                       )}
                     </div>
@@ -235,36 +284,26 @@ export default function DashboardPage() {
 
                   {/* Metadata Row */}
                   <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-ink-muted pt-2 border-t border-canvas-border/60">
-                    {event.location && (
+                    {evt.location && (
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-pine-600" />
-                        <span>{event.location}</span>
+                        <span>{evt.location}</span>
                       </span>
                     )}
-                    {event.startDate && (
+                    {(evt.start_date || evt.end_date) && (
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-pine-600" />
                         <span>
-                          {event.startDate}
-                          {event.endDate ? ` – ${event.endDate}` : ''}
+                          {evt.start_date || 'TBD'}
+                          {evt.end_date ? ` – ${evt.end_date}` : ''}
                         </span>
                       </span>
                     )}
-                    <span className="ml-auto font-medium text-ink">
-                      {event.completedItemCount}/{event.itemCount} items packed ({progressPct}%)
+                    <span className="ml-auto text-xs text-ink-muted">
+                      Created {new Date(evt.created_at).toLocaleDateString()}
                     </span>
                   </div>
-
-                  {/* Visual Progress Bar */}
-                  <div className="w-full h-1.5 rounded-full bg-canvas-subtle overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        event.status === 'completed' ? 'bg-locked-badge' : 'bg-pine-600'
-                      }`}
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -277,35 +316,41 @@ export default function DashboardPage() {
         onClose={() => setIsJoinDialogOpen(false)}
         title="Join Outing with Code"
         description="Enter the 8-character invite code provided by the trip organizer."
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setIsJoinDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                if (!inviteCodeInput.trim()) return;
-                alert(`Joining event with code: ${inviteCodeInput.toUpperCase()}`);
-                setIsJoinDialogOpen(false);
-                setInviteCodeInput('');
-              }}
-            >
-              Join Event
-            </Button>
-          </>
-        }
       >
-        <div className="py-2">
+        <form onSubmit={handleJoinSubmit} className="space-y-4 py-1">
+          {joinError && (
+            <div className="rounded-lg border border-[var(--color-terracotta-200)] bg-[var(--color-terracotta-50)] p-3 text-xs text-[var(--color-terracotta-700)]">
+              {joinError}
+            </div>
+          )}
+
           <Input
             label="Invite Code"
-            placeholder="e.g. SIERRA26"
+            placeholder="e.g. 7K2M9XP4"
             value={inviteCodeInput}
             onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
             required
             autoFocus
           />
-        </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsJoinDialogOpen(false)}
+              disabled={isJoining}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isJoining}
+            >
+              Join Outing
+            </Button>
+          </div>
+        </form>
       </Dialog>
 
       {/* Create Event Modal */}
@@ -314,27 +359,53 @@ export default function DashboardPage() {
         onClose={() => setIsCreateDialogOpen(false)}
         title="Plan New Outing"
         description="Create a private trip space and start assembling your shared packing list."
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setIsCreateDialogOpen(false)}>
+      >
+        <form onSubmit={handleCreateSubmit} className="space-y-3.5 py-1">
+          {createError && (
+            <div className="rounded-lg border border-[var(--color-terracotta-200)] bg-[var(--color-terracotta-50)] p-3 text-xs text-[var(--color-terracotta-700)]">
+              {createError}
+            </div>
+          )}
+
+          <Input
+            label="Trip Name"
+            placeholder="e.g. Yosemite Fall Campout"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            required
+            autoFocus
+          />
+          <Input
+            label="Destination / Location"
+            placeholder="e.g. Tuolumne Meadows, CA"
+            value={newLocation}
+            onChange={(e) => setNewLocation(e.target.value)}
+          />
+          <Input
+            label="Short Description"
+            placeholder="Gear and supplies coordination"
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
+          />
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsCreateDialogOpen(false)}
+              disabled={isCreating}
+            >
               Cancel
             </Button>
             <Button
+              type="submit"
               variant="primary"
-              onClick={() => {
-                setIsCreateDialogOpen(false);
-              }}
+              isLoading={isCreating}
             >
               Create Outing
             </Button>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-3.5 py-1">
-          <Input label="Trip Name" placeholder="e.g. Yosemite Fall Campout" required />
-          <Input label="Destination / Location" placeholder="e.g. Tuolumne Meadows, CA" />
-          <Input label="Short Description" placeholder="Gear and supplies coordination" />
-        </div>
+          </div>
+        </form>
       </Dialog>
     </AppShell>
   );
