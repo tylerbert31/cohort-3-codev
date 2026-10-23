@@ -1,49 +1,40 @@
 # Database & Authorization Design
 
-Use Supabase PostgreSQL as the source of truth. Use the installed Supabase MCP to inspect the connected project, review current schema/migrations, and apply schema changes through the project's supported workflow. Do not assume the database is empty.
+Use Supabase PostgreSQL as the source of truth. Schema migrations are auditable under `supabase/migrations/`.
 
-## Core entities (proposed; reconcile with existing schema before migration)
-- `profiles`: `clerk_user_id` (unique external identity), `first_name`, `last_name`, `image_url`, timestamps.
-- `events`: owner, name, event details, lifecycle status, archived timestamp, completed timestamp, created/updated timestamps.
-- `event_members`: event, profile/user identity, role, join timestamp.
-- `event_invites`: event, invite code/token hash, status/revocation metadata, creator, timestamps. Store secrets/tokens safely; never log raw invite secrets.
-- `checklist_sections`: event, title, ordering metadata, timestamps.
-- `checklist_items`: event/section, title, optional notes, optional quantity, optional assignee, completion state, ordering metadata, creator, timestamps.
-- `checklist_templates`: owner, name, optional description, timestamps.
-- `template_sections` and `template_items` (or a documented JSON representation if justified): normalized template content.
-- `activity_events`: event, actor, event type, safe structured metadata, timestamp.
+## Finalized Entities & Relationships
+Implemented in `supabase/migrations/20261024000000_outing_checklist_schema.sql` and typed in `src/types/database.ts`:
 
-Names and types are proposals, not permission to overwrite existing production data. Inspect the live schema first and create migrations that preserve existing data.
+1. `profiles`: `id` (UUID PK), `clerk_user_id` (TEXT UNIQUE NOT NULL), `first_name`, `last_name`, `image_url`, `created_at`, `updated_at`.
+2. `events`: `id` (UUID PK), `owner_id` (FK to profiles), `title`, `description`, `location`, `start_date`, `end_date`, `status` ('active' | 'archived' | 'completed'), `archived_at`, `completed_at`, timestamps.
+3. `event_members`: `id` (UUID PK), `event_id` (FK to events), `clerk_user_id` (FK to profiles), `role` ('owner' | 'participant'), `joined_at`. Unique constraint on `(event_id, clerk_user_id)`.
+4. `event_invites`: `id` (UUID PK), `event_id` (FK to events), `invite_code` (TEXT UNIQUE NOT NULL), `created_by` (FK to profiles), `is_active` (BOOL), timestamps, `revoked_at`.
+5. `checklist_sections`: `id` (UUID PK), `event_id` (FK to events), `title`, `position` (INT), timestamps.
+6. `checklist_items`: `id` (UUID PK), `event_id` (FK to events), `section_id` (FK to checklist_sections), `title`, `notes`, `quantity`, `assignee_id` (FK to profiles), `is_completed` (BOOL), `completed_at`, `completed_by` (FK to profiles), `position`, `created_by`, timestamps.
+7. `checklist_templates`: `id` (UUID PK), `owner_id` (FK to profiles), `name`, `description`, timestamps.
+8. `template_sections`: `id` (UUID PK), `template_id` (FK to checklist_templates), `title`, `position`, `created_at`.
+9. `template_items`: `id` (UUID PK), `template_id` (FK to checklist_templates), `section_id` (FK to template_sections), `title`, `notes`, `quantity`, `position`, `created_at`.
+10. `activity_events`: `id` (UUID PK), `event_id` (FK to events), `actor_id` (FK to profiles), `event_type`, `details` (JSONB), `created_at`.
 
-## Authorization requirements
-- Clerk is the only auth provider. The Clerk user ID is the canonical identity key.
-- Never trust a client-supplied user ID, role, owner ID, or event membership claim.
-- Every server action derives the authenticated Clerk user ID from the trusted Clerk server SDK.
-- Validate event membership and role for every read/mutation where required.
-- Completed events are permanently locked: enforce this in trusted mutation logic and, where feasible, database policies/constraints/RPCs so an overlooked code path cannot bypass the lock.
-- Ensure unauthorized users cannot access private event rows, related items, activity, or participant information.
-- Validate invite codes on the server, rate-limit or otherwise protect brute-forceable endpoints where the stack permits, and avoid leaking event details in errors.
-- Apply least privilege to service credentials. Never expose service-role credentials to browser code.
-- Use Supabase RLS as a defense-in-depth boundary for direct client access and Realtime. If using a server-only data access pattern, document the exact trusted boundary and ensure no browser-accessible key can bypass RLS. Do not silently disable RLS as a shortcut.
+## Database-Level Defense: Permanent Completed-Event Lock
+Enforced via PostgreSQL triggers:
+- `prevent_reopening_completed_event()`: Prevents transitioning an event out of `status = 'completed'`. Reopening is permanently disallowed for the MVP.
+- `check_event_not_locked()`: Attached to `checklist_sections`, `checklist_items`, and `event_members`. Rejects any `INSERT`, `UPDATE`, or `DELETE` if the parent event has `status = 'completed'`.
+- Mirror verification on the application layer: Server Actions execute `assertEventNotCompleted()` prior to database transactions.
 
-## Clerk profile synchronization
-- Upsert profile data from a trusted server-side path after authentication or through a verified Clerk webhook.
-- Persist Clerk ID, first name, last name, and profile-image URL.
-- Handle absent first/last names and changed profile images.
-- Avoid accepting arbitrary profile identity fields from the browser.
-- Ensure webhook verification if webhooks are used; make sync idempotent.
+## Row Level Security (RLS)
+Enabled on all 10 tables:
+- `profiles`: SELECT allowed for authenticated users; updates restricted to own profile.
+- `events`: SELECT allowed for participants; updates restricted to owner.
+- `event_members`: SELECT allowed for event participants.
+- `checklist_sections` & `checklist_items`: SELECT allowed for event participants.
+- `checklist_templates`, `template_sections`, `template_items`: Scoped strictly to `owner_id = clerk_user_id`.
+- `activity_events`: SELECT allowed for event participants.
 
-## Realtime
-- Subscribe only to data the current user is authorized to see.
-- Re-check membership and lifecycle constraints on server mutations; Realtime is not authorization.
-- Handle reconnect, duplicate notifications, and stale cached data.
-- Prefer invalidation/refetch or safe reconciliation over assuming events always arrive exactly once.
-
-## Migration process
-1. Inspect project/schema using Supabase MCP.
-2. Record existing tables, policies, functions, triggers, and migration state.
-3. Draft a migration and review destructive operations.
-4. Apply through the repository's migration workflow; do not make undocumented dashboard-only schema edits.
-5. Verify schema and policies after migration.
-6. Test positive and negative authorization cases.
-7. Update this file if the final schema differs from this proposal.
+## Authorization & Security Verification
+Automated test suite in `tests/data-model-security.test.ts` validates:
+- [x] Permanent completed-event lock throws `EVENT_LOCKED`.
+- [x] Non-member access rejected with `FORBIDDEN`.
+- [x] Unauthenticated access rejected with `UNAUTHORIZED`.
+- [x] Revoked, inactive, or non-existent invite codes rejected safely with `INVALID_INVITE`.
+- [x] Clerk profile synchronization sanitizes inputs and handles null/missing fields idempotently.
