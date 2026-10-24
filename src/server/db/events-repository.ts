@@ -40,18 +40,35 @@ export function generateSecureInviteCode(): string {
 }
 
 // In-memory persistent fallback store for tests and offline/local development
-const memoryStore = {
+interface MemoryStoreState {
+  profiles: Map<string, Profile>;
+  events: Map<string, Event>;
+  members: Map<string, EventMember[]>;
+  invites: Map<string, EventInvite[]>;
+  activities: Map<string, ActivityEvent[]>;
+  sections: Map<string, ChecklistSection[]>;
+  items: Map<string, ChecklistItem[]>;
+  templates: Map<string, ChecklistTemplate[]>;
+  templateSections: Map<string, TemplateSection[]>;
+  templateItems: Map<string, TemplateItem[]>;
+}
+
+const globalForStore = globalThis as unknown as {
+  __COHORT_MEMORY_STORE__?: MemoryStoreState;
+};
+
+const memoryStore: MemoryStoreState = (globalForStore.__COHORT_MEMORY_STORE__ ??= {
   profiles: new Map<string, Profile>(),
   events: new Map<string, Event>(),
-  members: new Map<string, EventMember[]>(), // eventId -> members
-  invites: new Map<string, EventInvite[]>(), // eventId -> invites
-  activities: new Map<string, ActivityEvent[]>(), // eventId -> activities
-  sections: new Map<string, ChecklistSection[]>(), // eventId -> sections
-  items: new Map<string, ChecklistItem[]>(), // eventId -> items
-  templates: new Map<string, ChecklistTemplate[]>(), // ownerId -> templates
-  templateSections: new Map<string, TemplateSection[]>(), // templateId -> sections
-  templateItems: new Map<string, TemplateItem[]>(), // templateId -> items
-};
+  members: new Map<string, EventMember[]>(),
+  invites: new Map<string, EventInvite[]>(),
+  activities: new Map<string, ActivityEvent[]>(),
+  sections: new Map<string, ChecklistSection[]>(),
+  items: new Map<string, ChecklistItem[]>(),
+  templates: new Map<string, ChecklistTemplate[]>(),
+  templateSections: new Map<string, TemplateSection[]>(),
+  templateItems: new Map<string, TemplateItem[]>(),
+});
 
 export class EventsRepository {
   /**
