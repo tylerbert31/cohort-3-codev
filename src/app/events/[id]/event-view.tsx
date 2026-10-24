@@ -870,7 +870,7 @@ export default function EventView({
   });
 
   return (
-    <div className="space-y-6 pb-20 sm:pb-8">
+    <div className="space-y-5 pb-24 sm:space-y-6 sm:pb-8">
       {/* Back link + Status Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -934,29 +934,29 @@ export default function EventView({
       )}
 
       {/* Trip Hero Header Card */}
-      <div className="rounded-xl border border-canvas-border bg-canvas-card p-6 sm:p-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-2 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-ink">
+      <div className="overflow-hidden rounded-[26px] border border-canvas-border bg-[#fffefa] shadow-[0_12px_36px_rgba(23,43,36,.05)]">
+        <div className="relative isolate flex flex-col gap-5 overflow-hidden bg-[#173b2e] p-5 text-white sm:p-7 md:flex-row md:items-start md:justify-between cohort-grid">
+          <div className="relative z-10 min-w-0 flex-1 space-y-3">
+            <h1 className="max-w-3xl break-words text-[2rem] font-semibold leading-[1.02] tracking-[-.06em] text-white sm:text-4xl">
               {event.title}
             </h1>
             {event.description && (
-              <p className="text-sm text-ink-muted max-w-2xl leading-relaxed">
+              <p className="max-w-2xl text-sm leading-6 text-white/70 sm:text-[15px]">
                 {event.description}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-ink-muted">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pt-2 text-xs text-white/75">
               {event.location && (
                 <div className="flex items-center gap-1.5 font-medium">
-                  <MapPin className="h-4 w-4 text-pine-600 shrink-0" />
+                  <MapPin className="h-4 w-4 shrink-0 text-[#d6ef9c]" />
                   <span>{event.location}</span>
                 </div>
               )}
 
               {(event.start_date || event.end_date) && (
                 <div className="flex items-center gap-1.5 font-medium">
-                  <Calendar className="h-4 w-4 text-pine-600 shrink-0" />
+                  <Calendar className="h-4 w-4 shrink-0 text-[#d6ef9c]" />
                   <span>{formatTripDateRange(event.start_date, event.end_date)}</span>
                 </div>
               )}
@@ -971,7 +971,7 @@ export default function EventView({
           </div>
 
           {/* Action cluster with overflow menu */}
-          <div className="flex items-center gap-2 pt-2 md:pt-0 shrink-0 relative">
+          <div className="relative z-10 flex shrink-0 items-center gap-2 pt-1 md:pt-0">
             {!isLocked && (
               <Button
                 variant="primary"
@@ -1067,12 +1067,14 @@ export default function EventView({
           </div>
         </div>
 
+        </div>
+
         {/* Global Progress Bar */}
-        <div className="mt-6 pt-6 border-t border-canvas-border">
-          <div className="flex items-center justify-between text-xs font-semibold text-ink mb-2">
+        <div className="border-t border-canvas-border p-5 sm:p-7">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-ink">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-pine-600" />
-              <span>Cohort Packing Progress</span>
+              <span>Group packing progress</span>
             </span>
             <span className="font-mono">
               {completedItems} of {totalItems} items packed ({overallProgressPct}%)
@@ -1085,7 +1087,7 @@ export default function EventView({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="mt-6">
+        <div className="px-4 pb-4 pt-1 sm:px-7 sm:pb-6">
           <Tabs
             tabs={[
               { id: 'checklist', label: 'Packing List', count: totalItems },
@@ -1103,9 +1105,9 @@ export default function EventView({
       {activeTab === 'checklist' && (
         <div className="space-y-6">
           {/* Streamlined Mobile & Desktop Toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Segmented Filter Control */}
-            <div className="flex items-center p-1 bg-canvas-muted/60 rounded-xl border border-canvas-border/70 text-xs w-full sm:w-auto shadow-2xs">
+            <div className="flex w-full items-center rounded-xl border border-canvas-border/80 bg-[#e9ece3] p-1 text-xs sm:w-auto">
               <button
                 type="button"
                 onClick={() => setFilterMode('all')}
@@ -1245,12 +1247,12 @@ export default function EventView({
             <div className="space-y-6">
               {/* Direct Unsectioned Items Card */}
               {unsectionedItems.length > 0 && (
-                <div className="rounded-xl border border-canvas-border/80 bg-canvas-card p-3.5 sm:p-5 transition-all shadow-2xs">
+                <div className="overflow-hidden rounded-[22px] border border-canvas-border/80 bg-[#fffefa] p-4 shadow-[0_4px_18px_rgba(23,43,36,.025)] transition-colors sm:p-5">
                   {/* Card Header */}
                   <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
                     <div className="flex items-center gap-2">
                       <PackageCheck className="w-4 h-4 text-pine-600" />
-                      <h2 className="text-base font-serif font-bold text-ink">
+                      <h2 className="text-xl font-semibold tracking-[-.04em] text-ink">
                         {sections.length > 0 ? 'General Items (No Category)' : 'Checklist Items'}
                       </h2>
                       <span className="text-xs text-ink-muted font-mono">
@@ -1581,7 +1583,7 @@ export default function EventView({
 
       {/* Cohort Members Tab */}
       {activeTab === 'members' && (
-        <div className="rounded-xl border border-canvas-border bg-canvas-card p-6">
+        <div className="rounded-[24px] border border-canvas-border bg-[#fffefa] p-5 shadow-[0_8px_28px_rgba(23,43,36,.04)] sm:p-7">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-base font-serif font-bold text-ink">Expedition Cohort</h2>
@@ -1640,7 +1642,7 @@ export default function EventView({
       {/* Activity Log Tab */}
       {activeTab === 'activity' && (
         <div className="rounded-xl border border-canvas-border bg-canvas-card p-6">
-          <h2 className="text-base font-serif font-bold text-ink mb-1">Trip Timeline</h2>
+          <h2 className="mb-1 text-xl font-semibold tracking-[-.04em] text-ink">Trip Timeline</h2>
           <p className="text-xs text-ink-muted mb-5">Audit trail of group updates and packing progress.</p>
           {activities.length === 0 ? (
             <p className="text-sm text-ink-muted italic">No recorded activity yet.</p>
