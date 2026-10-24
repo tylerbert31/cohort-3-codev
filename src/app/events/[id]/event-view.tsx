@@ -1067,8 +1067,6 @@ export default function EventView({
           </div>
         </div>
 
-        </div>
-
         {/* Global Progress Bar */}
         <div className="border-t border-canvas-border p-5 sm:p-7">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-ink">
