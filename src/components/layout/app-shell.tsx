@@ -124,7 +124,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 pb-24 sm:pb-8">
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 pb-28 sm:pb-12">
         {eventTitle && (
           <div className="mb-4">
             <h1 className="text-2xl font-bold tracking-tight text-ink">{eventTitle}</h1>
@@ -141,7 +141,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <Link
           href="/"
           className={cn(
-            'flex flex-col items-center gap-1 touch-target text-xs font-medium rounded-lg',
+            'flex flex-col items-center gap-1 min-w-[48px] py-1.5 px-3 text-xs font-medium rounded-lg',
             activeTab === 'events' ? 'text-pine-600 font-bold' : 'text-ink-muted'
           )}
         >
@@ -163,7 +163,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <Link
           href="/templates"
           className={cn(
-            'flex flex-col items-center gap-1 touch-target text-xs font-medium rounded-lg',
+            'flex flex-col items-center gap-1 min-w-[48px] py-1.5 px-3 text-xs font-medium rounded-lg',
             activeTab === 'templates' ? 'text-pine-600 font-bold' : 'text-ink-muted'
           )}
         >

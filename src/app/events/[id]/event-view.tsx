@@ -193,6 +193,14 @@ export default function EventView({
 
   const overallProgressPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
+  // Filter counts for segmented control
+  const allItemsList = [
+    ...sections.flatMap((s) => s.items),
+    ...unsectionedItems,
+  ];
+  const mineCount = allItemsList.filter((i) => i.assignee_id === currentUserId).length;
+  const unassignedCount = allItemsList.filter((i) => !i.assignee_id).length;
+
   // Handlers
   const handleToggleItem = async (itemId: string, nextCompleted: boolean) => {
     if (isLocked) return;
@@ -711,7 +719,7 @@ export default function EventView({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 sm:pb-8">
       {/* Back link + Status Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -897,48 +905,48 @@ export default function EventView({
       {/* Tab Panels */}
       {activeTab === 'checklist' && (
         <div className="space-y-6">
-          {/* Section Toolbar + My Items Filter */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-canvas-card p-3.5 rounded-xl border border-canvas-border">
-            {/* Filter modes */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-ink-muted mr-1 font-medium">Show:</span>
+          {/* Streamlined Mobile & Desktop Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            {/* Segmented Filter Control */}
+            <div className="flex items-center p-1 bg-canvas-muted/60 rounded-xl border border-canvas-border/70 text-xs w-full sm:w-auto shadow-2xs">
               <button
                 type="button"
                 onClick={() => setFilterMode('all')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
                   filterMode === 'all'
-                    ? 'bg-pine-600 text-white'
-                    : 'bg-canvas-subtle text-ink hover:bg-canvas-muted'
+                    ? 'bg-white text-ink shadow-xs font-semibold'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
-                All Gear
+                All ({totalItems})
               </button>
               <button
                 type="button"
                 onClick={() => setFilterMode('mine')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
                   filterMode === 'mine'
-                    ? 'bg-pine-600 text-white'
-                    : 'bg-canvas-subtle text-ink hover:bg-canvas-muted'
+                    ? 'bg-white text-ink shadow-xs font-semibold'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
-                My Items
+                Mine ({mineCount})
               </button>
               <button
                 type="button"
                 onClick={() => setFilterMode('unassigned')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
                   filterMode === 'unassigned'
-                    ? 'bg-pine-600 text-white'
-                    : 'bg-canvas-subtle text-ink hover:bg-canvas-muted'
+                    ? 'bg-white text-ink shadow-xs font-semibold'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
-                Unassigned
+                Unassigned ({unassignedCount})
               </button>
             </div>
 
+            {/* Compact Action Buttons */}
             {!isLocked && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button
                   size="sm"
                   variant="outline"
@@ -946,7 +954,7 @@ export default function EventView({
                     setSectionTitle('');
                     setIsAddSectionOpen(true);
                   }}
-                  className="gap-1.5 self-start sm:self-auto"
+                  className="gap-1.5 text-xs flex-1 sm:flex-initial h-9 font-medium"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add Category
@@ -961,9 +969,10 @@ export default function EventView({
                     setItemQuantity('');
                     setItemNotes('');
                     setItemAssigneeId('');
+                    setItemDeadline('');
                     setIsAddItemOpen(true);
                   }}
-                  className="gap-1.5 self-start sm:self-auto"
+                  className="gap-1.5 text-xs flex-1 sm:flex-initial h-9 font-medium"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add Item
@@ -995,7 +1004,7 @@ export default function EventView({
             <div className="space-y-6">
               {/* Direct Unsectioned Items Card */}
               {unsectionedItems.length > 0 && (
-                <div className="rounded-xl border border-canvas-border bg-canvas-card p-5 transition-all">
+                <div className="rounded-xl border border-canvas-border/80 bg-canvas-card p-3.5 sm:p-5 transition-all shadow-2xs">
                   {/* Card Header */}
                   <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
                     <div className="flex items-center gap-2">
@@ -1010,7 +1019,7 @@ export default function EventView({
 
                     {!isLocked && (
                       <Button
-                        variant="quiet"
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           setSelectedSectionId(null);
@@ -1018,12 +1027,13 @@ export default function EventView({
                           setItemQuantity('');
                           setItemNotes('');
                           setItemAssigneeId('');
+                          setItemDeadline('');
                           setIsAddItemOpen(true);
                         }}
-                        className="text-xs text-pine-700"
+                        className="h-7 px-2.5 text-xs gap-1 text-pine-700 border-pine-200 hover:bg-pine-50 hover:border-pine-300"
                       >
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        Details
+                        <Plus className="w-3 h-3" />
+                        <span>Add Item</span>
                       </Button>
                     )}
                   </div>
@@ -1068,24 +1078,23 @@ export default function EventView({
                         e.preventDefault();
                         handleQuickAddDirect();
                       }}
-                      className="mt-3 pt-3 border-t border-canvas-border/50 flex items-center gap-2"
+                      className="mt-3 pt-2.5 border-t border-canvas-border/60 flex items-center gap-2"
                     >
                       <input
                         type="text"
-                        placeholder="Quick add item (e.g. Park pass, Map, Sunscreen)..."
+                        placeholder="Quick add gear item..."
                         value={quickAddDirectTitle}
                         onChange={(e) => setQuickAddDirectTitle(e.target.value)}
-                        className="flex-1 bg-transparent px-3 py-1.5 text-sm rounded-lg border border-transparent hover:border-canvas-border focus:border-pine-600 focus:bg-white focus:outline-none transition-colors"
+                        className="flex-1 bg-canvas-subtle/50 px-3 py-2 text-sm rounded-lg border border-canvas-border/80 focus:border-pine-600 focus:bg-white focus:outline-none transition-all placeholder:text-ink-muted/70 text-ink"
                       />
-                      <Button
+                      <button
                         type="submit"
-                        size="sm"
-                        variant="ghost"
                         disabled={!quickAddDirectTitle.trim()}
                         aria-label="Add item"
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-pine-600 text-white hover:bg-pine-700 disabled:opacity-40 disabled:hover:bg-pine-600 transition-colors shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
                       >
-                        <Send className="w-3.5 h-3.5 text-pine-600" />
-                      </Button>
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
                     </form>
                   )}
                 </div>
@@ -1106,7 +1115,7 @@ export default function EventView({
                 return (
                   <div
                     key={section.id}
-                    className="rounded-xl border border-canvas-border bg-canvas-card p-5 transition-all"
+                    className="rounded-xl border border-canvas-border/80 bg-canvas-card p-3.5 sm:p-5 transition-all shadow-2xs"
                   >
                     {/* Section Header */}
                     <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
@@ -1122,16 +1131,21 @@ export default function EventView({
 
                       {!isLocked && (
                         <Button
-                          variant="quiet"
+                          variant="outline"
                           size="sm"
                           onClick={() => {
                             setSelectedSectionId(section.id);
+                            setItemTitle('');
+                            setItemQuantity('');
+                            setItemNotes('');
+                            setItemAssigneeId('');
+                            setItemDeadline('');
                             setIsAddItemOpen(true);
                           }}
-                          className="text-xs text-pine-700"
+                          className="h-7 px-2.5 text-xs gap-1 text-pine-700 border-pine-200 hover:bg-pine-50 hover:border-pine-300"
                         >
-                          <Plus className="w-3.5 h-3.5 mr-1" />
-                          Details
+                          <Plus className="w-3 h-3" />
+                          <span>Add Item</span>
                         </Button>
                       )}
                     </div>
