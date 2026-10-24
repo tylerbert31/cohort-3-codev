@@ -20,7 +20,7 @@ import {
   KeyRound,
   ChevronRight,
 } from 'lucide-react';
-import type { Event, EventStatus } from '@/types/database';
+import type { Event } from '@/types/database';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -41,9 +41,9 @@ export default function DashboardPage() {
 
   // Events grouped by status
   const [eventsData, setEventsData] = useState<{
-    active: Event[];
-    archived: Event[];
-    completed: Event[];
+    active: (Event & { itemCount: number; completedItemCount: number })[];
+    archived: (Event & { itemCount: number; completedItemCount: number })[];
+    completed: (Event & { itemCount: number; completedItemCount: number })[];
   }>({
     active: [],
     archived: [],
@@ -51,32 +51,40 @@ export default function DashboardPage() {
   });
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
-  // Load user events
-  const loadEvents = async () => {
-    try {
-      const res = await listUserEventsAction();
-      if (res.success && res.data) {
-        setEventsData(res.data);
-      }
-    } catch (err) {
-      console.error('Failed to load events:', err);
-    } finally {
-      setIsLoadingEvents(false);
-    }
-  };
-
   // Trusted profile synchronization on session load + fetch events
   useEffect(() => {
-    if (user?.id) {
-      syncUserProfile()
-        .then(() => loadEvents())
-        .catch((err) => {
+    let isMounted = true;
+
+    async function initDashboard() {
+      if (user?.id) {
+        try {
+          await syncUserProfile();
+        } catch (err) {
           console.error('Background profile sync error:', err);
-          loadEvents();
-        });
-    } else if (isLoaded) {
-      setIsLoadingEvents(false);
+        }
+
+        try {
+          const res = await listUserEventsAction();
+          if (isMounted && res.success && res.data) {
+            setEventsData(res.data);
+          }
+        } catch (err) {
+          console.error('Failed to load events:', err);
+        }
+      }
+
+      if (isMounted) {
+        setIsLoadingEvents(false);
+      }
     }
+
+    if (isLoaded) {
+      initDashboard();
+    }
+
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id, isLoaded]);
 
   const currentTabEvents = eventsData[activeTab];

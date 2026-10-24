@@ -1,4 +1,7 @@
 import { supabaseAdmin } from '@/server/db/supabase-admin';
+
+interface SupabaseDbFallback { from: (table: string) => { upsert: (p: unknown) => Promise<unknown>; insert: (p: unknown) => Promise<unknown> } }
+const rawDb = supabaseAdmin as unknown as SupabaseDbFallback;
 import type {
   Event,
   EventMember,
@@ -86,7 +89,7 @@ export class EventsRepository {
 
     // Try Supabase if available
     try {
-      await (supabaseAdmin as any).from('profiles').upsert({
+      await rawDb.from('profiles').upsert({
         clerk_user_id: updated.clerk_user_id,
         first_name: updated.first_name,
         last_name: updated.last_name,
@@ -166,7 +169,7 @@ export class EventsRepository {
 
     // Attempt Supabase insert
     try {
-      await (supabaseAdmin as any).from('events').insert({
+      await rawDb.from('events').insert({
         id: event.id,
         owner_id: event.owner_id,
         title: event.title,
@@ -177,14 +180,14 @@ export class EventsRepository {
         status: event.status,
       });
 
-      await (supabaseAdmin as any).from('event_members').insert({
+      await rawDb.from('event_members').insert({
         id: ownerMember.id,
         event_id: ownerMember.event_id,
         clerk_user_id: ownerMember.clerk_user_id,
         role: ownerMember.role,
       });
 
-      await (supabaseAdmin as any).from('activity_events').insert({
+      await rawDb.from('activity_events').insert({
         id: activity.id,
         event_id: activity.event_id,
         actor_id: activity.actor_id,

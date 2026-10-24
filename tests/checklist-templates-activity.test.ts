@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EventsRepository } from '@/server/db/events-repository';
-import { AuthorizationError } from '@/server/auth/authorization';
 import { inviteRateLimiter } from '@/server/utils/rate-limiter';
 
 describe('Phase 05 — Checklist, Templates & Activity Suite', () => {

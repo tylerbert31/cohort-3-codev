@@ -10,16 +10,19 @@ export interface UseRealtimeEventOptions {
 }
 
 export function useEventRealtime({ eventId, onRefresh }: UseRealtimeEventOptions) {
-  const [status, setStatus] = useState<'connected' | 'connecting' | 'disconnected' | 'idle'>('connecting');
+  const isAvailable = Boolean(
+    typeof process !== 'undefined' &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+  );
+
+  const [status, setStatus] = useState<'connected' | 'connecting' | 'disconnected' | 'idle'>(
+    isAvailable ? 'connecting' : 'idle'
+  );
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    // If running in an environment without Supabase configuration or offline, idle gracefully
-    if (
-      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-      process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
-    ) {
-      setStatus('idle');
+    if (!isAvailable) {
       return;
     }
 
@@ -64,7 +67,7 @@ export function useEventRealtime({ eventId, onRefresh }: UseRealtimeEventOptions
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventId, onRefresh]);
+  }, [eventId, isAvailable, onRefresh]);
 
   return { status };
 }

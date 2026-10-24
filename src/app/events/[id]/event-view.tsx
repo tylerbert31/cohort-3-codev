@@ -693,7 +693,7 @@ export default function EventView({
                           {section.title}
                         </h3>
                         <span className="text-xs text-[var(--color-ink-muted)]">
-                          ({secCompleted}/{secTotal} packed)
+                          ({secCompleted}/{secTotal} packed, {secPct}%)
                         </span>
                       </div>
 
