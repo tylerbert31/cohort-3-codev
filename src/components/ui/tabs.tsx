@@ -47,9 +47,30 @@ export const Tabs: React.FC<TabsProps> = ({
             role="tab"
             type="button"
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             aria-controls={`panel-${tab.id}`}
             id={`tab-${tab.id}`}
             onClick={() => onChange(tab.id)}
+            onKeyDown={(event) => {
+              const tabButtons = event.currentTarget
+                .closest('[role="tablist"]')
+                ?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+              if (!tabButtons?.length) return;
+
+              const currentIndex = Array.from(tabButtons).indexOf(event.currentTarget);
+              let nextIndex = currentIndex;
+
+              if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabButtons.length;
+              else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabButtons.length) % tabButtons.length;
+              else if (event.key === 'Home') nextIndex = 0;
+              else if (event.key === 'End') nextIndex = tabButtons.length - 1;
+              else return;
+
+              event.preventDefault();
+              const nextTab = tabButtons[nextIndex];
+              nextTab.focus();
+              nextTab.click();
+            }}
             className={cn(
               'flex min-h-[44px] min-w-0 items-center justify-center gap-1.5 px-1.5 py-2 text-xs font-medium leading-tight transition-colors sm:px-3 sm:text-sm',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600',
