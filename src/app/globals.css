@@ -1,14 +1,18 @@
 @import "tailwindcss";
 
 @theme {
+  --font-serif: var(--font-fraunces), serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
   --color-canvas: #FAF8F5;
+  --color-canvas-card: #FFFFFF;
   --color-canvas-subtle: #F3EFE9;
   --color-canvas-muted: #EBE5DB;
   --color-canvas-border: #DCD4C7;
 
   --color-ink: #211D18;
   --color-ink-muted: #6E6659;
-  --color-ink-subtle: #988F80;
+  --color-ink-subtle: #7A7265; /* elevated to >= 4.5:1 on canvas */
 
   --color-pine-50: #F1F6F3;
   --color-pine-100: #E0EDE5;
@@ -25,19 +29,31 @@
 
   --color-terracotta-50: #FDF5F2;
   --color-terracotta-100: #FAE8E1;
+  --color-terracotta-200: #F5D3C8;
   --color-terracotta-500: #C14F33;
+  --color-terracotta-600: #A83E24;
   --color-terracotta-700: #7E2D18;
 
   --color-locked-surface: #F1F3F5;
   --color-locked-border: #D4D8DC;
   --color-locked-text: #636A73;
+  --color-locked-badge: #636A73;
+  --color-locked-ink: #3D4249;
+}
+
+@utility touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @layer base {
   body {
     background-color: var(--color-canvas);
     color: var(--color-ink);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1;
     -webkit-tap-highlight-color: transparent;
   }
 

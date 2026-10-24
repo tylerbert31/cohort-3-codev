@@ -40,10 +40,10 @@ export const AppShell: React.FC<AppShellProps> = ({
             href="/"
             className="flex items-center gap-2.5 font-semibold text-lg text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 rounded-md"
           >
-            <div className="w-8 h-8 rounded-lg bg-pine-600 text-white flex items-center justify-center shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-pine-600 text-white flex items-center justify-center">
               <Compass className="w-5 h-5" />
             </div>
-            <span className="tracking-tight font-bold">Outing Checklist</span>
+            <span className="tracking-tight font-bold text-xl">cohort</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -54,10 +54,10 @@ export const AppShell: React.FC<AppShellProps> = ({
                 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 activeTab === 'events'
                   ? 'bg-canvas-subtle text-pine-700 font-semibold'
-                  : 'text-ink-muted hover:text-ink hover:bg-canvas-subtle/50'
+                  : 'text-ink-muted hover:text-ink hover:bg-canvas-subtle'
               )}
             >
-              Events
+              Trips
             </Link>
             <Link
               href="/templates"
@@ -65,7 +65,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 activeTab === 'templates'
                   ? 'bg-canvas-subtle text-pine-700 font-semibold'
-                  : 'text-ink-muted hover:text-ink hover:bg-canvas-subtle/50'
+                  : 'text-ink-muted hover:text-ink hover:bg-canvas-subtle'
               )}
             >
               Templates
@@ -78,7 +78,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button
                 type="button"
                 onClick={onShareAction}
-                aria-label="Share event invite link"
+                aria-label="Share trip invite link"
                 className="touch-target rounded-lg border border-canvas-border text-ink hover:bg-canvas-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
               >
                 <Share2 className="w-4 h-4" />
@@ -91,7 +91,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-pine-600 text-white text-sm font-medium hover:bg-pine-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
               >
                 <Plus className="w-4 h-4" />
-                <span>New Item</span>
+                <span>{eventTitle ? 'Add Item' : 'New Trip'}</span>
               </button>
             )}
 
@@ -146,14 +146,14 @@ export const AppShell: React.FC<AppShellProps> = ({
           )}
         >
           <Calendar className="w-5 h-5" />
-          <span>Events</span>
+          <span>Trips</span>
         </Link>
 
         {onNewAction && (
           <button
             type="button"
             onClick={onNewAction}
-            aria-label="Add new checklist item"
+            aria-label={eventTitle ? 'Add checklist item' : 'Create new trip'}
             className="w-12 h-12 -mt-5 rounded-full bg-pine-600 text-white flex items-center justify-center shadow-md active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
           >
             <Plus className="w-6 h-6 stroke-[2.5]" />
