@@ -28,7 +28,7 @@ async function EventContent({ params }: { params: Promise<{ id: string }> }) {
     notFound();
   }
 
-  const { event, members, activities, sections, userRole } = res.data;
+  const { event, members, activities, sections, unsectionedItems, userRole } = res.data;
 
   return (
     <EventView
@@ -36,6 +36,7 @@ async function EventContent({ params }: { params: Promise<{ id: string }> }) {
       initialMembers={members}
       initialActivities={activities}
       initialSections={sections}
+      initialUnsectionedItems={unsectionedItems}
       userRole={userRole}
       currentUserId={userId}
     />

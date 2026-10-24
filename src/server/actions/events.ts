@@ -65,6 +65,7 @@ export async function getEventDetailsAction(eventId: string): Promise<
     members: (EventMember & { profile?: Profile })[];
     activities: ActivityEvent[];
     sections: (ChecklistSection & { items: ChecklistItem[] })[];
+    unsectionedItems: (ChecklistItem & { assignee?: Profile | null })[];
     userRole: 'owner' | 'participant';
   }>
 > {
