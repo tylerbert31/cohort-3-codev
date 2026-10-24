@@ -45,6 +45,7 @@ import {
   Calendar,
   MapPin,
   Users,
+  PackageCheck,
 } from 'lucide-react';
 
 interface EventViewProps {
@@ -52,6 +53,7 @@ interface EventViewProps {
   initialMembers: (EventMember & { profile?: Profile })[];
   initialActivities: ActivityEvent[];
   initialSections: (ChecklistSection & { items: ChecklistItem[] })[];
+  initialUnsectionedItems?: (ChecklistItem & { assignee?: Profile | null })[];
   userRole: 'owner' | 'participant';
   currentUserId: string;
 }
@@ -61,6 +63,7 @@ export default function EventView({
   initialMembers,
   initialActivities,
   initialSections,
+  initialUnsectionedItems,
   userRole,
   currentUserId,
 }: EventViewProps) {
@@ -71,6 +74,9 @@ export default function EventView({
   const [sections, setSections] = useState<(ChecklistSection & { items: ChecklistItem[] })[]>(
     initialSections
   );
+  const [unsectionedItems, setUnsectionedItems] = useState<
+    (ChecklistItem & { assignee?: Profile | null })[]
+  >(initialUnsectionedItems || []);
   const [activeTab, setActiveTab] = useState<'checklist' | 'members' | 'activity'>('checklist');
 
   // Realtime hook to automatically synchronize changes across participants
@@ -126,11 +132,16 @@ export default function EventView({
   const isArchived = event.status === 'archived';
 
   // Overall checklist progress calculations
-  const totalItems = sections.reduce((acc, sec) => acc + sec.items.length, 0);
-  const completedItems = sections.reduce(
+  const totalSectionItems = sections.reduce((acc, sec) => acc + sec.items.length, 0);
+  const totalItems = totalSectionItems + unsectionedItems.length;
+
+  const completedSectionItems = sections.reduce(
     (acc, sec) => acc + sec.items.filter((it) => it.is_completed).length,
     0
   );
+  const completedItems =
+    completedSectionItems + unsectionedItems.filter((it) => it.is_completed).length;
+
   const overallProgressPct =
     totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
@@ -252,8 +263,8 @@ export default function EventView({
     }
   };
 
-  const handleOpenAddItem = (sectionId: string) => {
-    setTargetSectionId(sectionId);
+  const handleOpenAddItem = (sectionId?: string | null) => {
+    setTargetSectionId(sectionId ?? null);
     setItemTitle('');
     setItemQuantity('');
     setItemAssigneeId('');
@@ -263,7 +274,7 @@ export default function EventView({
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!itemTitle.trim() || !targetSectionId) return;
+    if (!itemTitle.trim()) return;
 
     setIsSubmittingItem(true);
     setActionError(null);
@@ -271,7 +282,7 @@ export default function EventView({
     try {
       const res = await createItemAction({
         eventId: event.id,
-        section_id: targetSectionId,
+        section_id: targetSectionId || null,
         title: itemTitle.trim(),
         quantity: itemQuantity.trim() || null,
         assignee_id: itemAssigneeId || null,
@@ -284,13 +295,17 @@ export default function EventView({
           ? members.find((m) => m.clerk_user_id === newItem.assignee_id)?.profile || null
           : null;
 
-        setSections((prev) =>
-          prev.map((sec) =>
-            sec.id === targetSectionId
-              ? { ...sec, items: [...sec.items, { ...newItem, assignee }] }
-              : sec
-          )
-        );
+        if (targetSectionId) {
+          setSections((prev) =>
+            prev.map((sec) =>
+              sec.id === targetSectionId
+                ? { ...sec, items: [...sec.items, { ...newItem, assignee }] }
+                : sec
+            )
+          );
+        } else {
+          setUnsectionedItems((prev) => [...prev, { ...newItem, assignee }]);
+        }
         setIsAddItemOpen(false);
       } else {
         setActionError(res.error || 'Failed to add item.');
@@ -305,7 +320,7 @@ export default function EventView({
   const handleToggleItem = async (itemId: string, nextCompleted: boolean) => {
     if (isLocked) return;
 
-    // Optimistic update
+    // Optimistic update for sectioned items
     setSections((prev) =>
       prev.map((sec) => ({
         ...sec,
@@ -320,6 +335,20 @@ export default function EventView({
             : it
         ),
       }))
+    );
+
+    // Optimistic update for unsectioned items
+    setUnsectionedItems((prev) =>
+      prev.map((it) =>
+        it.id === itemId
+          ? {
+              ...it,
+              is_completed: nextCompleted,
+              completed_at: nextCompleted ? new Date().toISOString() : null,
+              completed_by: nextCompleted ? currentUserId : null,
+            }
+          : it
+      )
     );
 
     try {
@@ -339,17 +368,21 @@ export default function EventView({
     }
   };
 
-  const handleDeleteItem = async (itemId: string, sectionId: string) => {
+  const handleDeleteItem = async (itemId: string, sectionId?: string | null) => {
     if (isLocked) return;
 
     // Optimistic remove
-    setSections((prev) =>
-      prev.map((sec) =>
-        sec.id === sectionId
-          ? { ...sec, items: sec.items.filter((it) => it.id !== itemId) }
-          : sec
-      )
-    );
+    if (sectionId) {
+      setSections((prev) =>
+        prev.map((sec) =>
+          sec.id === sectionId
+            ? { ...sec, items: sec.items.filter((it) => it.id !== itemId) }
+            : sec
+        )
+      );
+    } else {
+      setUnsectionedItems((prev) => prev.filter((it) => it.id !== itemId));
+    }
 
     try {
       const res = await deleteItemAction({
@@ -632,7 +665,7 @@ export default function EventView({
                   size="sm"
                   variant="outline"
                   onClick={handleOpenSaveTemplate}
-                  disabled={sections.length === 0}
+                  disabled={totalItems === 0}
                   className="gap-1.5"
                 >
                   <BookmarkPlus className="w-3.5 h-3.5 text-pine-600" />
@@ -651,30 +684,114 @@ export default function EventView({
 
                 <Button
                   size="sm"
-                  variant="primary"
+                  variant="outline"
                   onClick={() => {
                     setSectionTitle('');
                     setIsAddSectionOpen(true);
                   }}
                   className="gap-1.5"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Layers className="w-3.5 h-3.5 text-pine-700" />
                   New Section
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => handleOpenAddItem(null)}
+                  className="gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Item
                 </Button>
               </div>
             )}
           </div>
 
-          {/* Sections List */}
-          {sections.length === 0 ? (
+          {/* Sections & Items List */}
+          {sections.length === 0 && unsectionedItems.length === 0 ? (
             <EmptyState
-              title="No checklist sections yet"
-              description="Organize your trip gear by categories such as Camp Kitchen, Sleeping Gear, or Personal Essentials."
-              actionLabel={!isLocked ? 'Create First Section' : undefined}
-              onAction={!isLocked ? () => setIsAddSectionOpen(true) : undefined}
+              title="No checklist items yet"
+              description="Directly add items to this outing, or create sections to group items by category."
+              actionLabel={!isLocked ? 'Add First Item' : undefined}
+              onAction={!isLocked ? () => handleOpenAddItem(null) : undefined}
             />
           ) : (
             <div className="space-y-6">
+              {/* Unsectioned / Direct Items Card */}
+              {unsectionedItems.length > 0 && (
+                <div className="rounded-2xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas-card)] p-5 shadow-xs transition-all">
+                  {/* Card Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-[var(--color-canvas-border)]">
+                    <div className="flex items-center gap-2">
+                      <PackageCheck className="w-4 h-4 text-[var(--color-pine-600)]" />
+                      <h3 className="text-base font-bold text-[var(--color-ink)]">
+                        {sections.length > 0 ? 'General Items (No Section)' : 'Checklist Items'}
+                      </h3>
+                      <span className="text-xs text-[var(--color-ink-muted)]">
+                        ({unsectionedItems.filter((i) => i.is_completed).length}/{unsectionedItems.length} packed,{' '}
+                        {Math.round(
+                          (unsectionedItems.filter((i) => i.is_completed).length /
+                            unsectionedItems.length) *
+                            100
+                        )}
+                        %)
+                      </span>
+                    </div>
+
+                    {!isLocked && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenAddItem(null)}
+                          className="text-xs text-pine-700 hover:bg-pine-50"
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" />
+                          Add Item
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Items List */}
+                  <div className="space-y-2">
+                    {unsectionedItems.map((item) => (
+                      <div key={item.id} className="relative group/row">
+                        <ChecklistRow
+                          id={item.id}
+                          title={item.title}
+                          quantity={item.quantity || undefined}
+                          notes={item.notes || undefined}
+                          assigneeName={
+                            item.assignee?.first_name
+                              ? `${item.assignee.first_name} ${item.assignee.last_name || ''}`.trim()
+                              : undefined
+                          }
+                          assigneeImageUrl={item.assignee?.image_url || undefined}
+                          isCompleted={item.is_completed}
+                          isEventLocked={isLocked}
+                          onToggle={() => handleToggleItem(item.id, !item.is_completed)}
+                        />
+
+                        {!isLocked && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem(item.id, null)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity p-1.5 text-zinc-400 hover:text-terracotta-600 rounded-md focus:opacity-100"
+                            title="Delete Item"
+                            aria-label={`Delete ${item.title}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sections List */}
               {sections.map((section) => {
                 const secTotal = section.items.length;
                 const secCompleted = section.items.filter((i) => i.is_completed).length;
@@ -900,6 +1017,26 @@ export default function EventView({
             value={itemQuantity}
             onChange={(e) => setItemQuantity(e.target.value)}
           />
+
+          {sections.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
+                Section (Optional)
+              </label>
+              <select
+                value={targetSectionId || ''}
+                onChange={(e) => setTargetSectionId(e.target.value || null)}
+                className="w-full rounded-xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas)] px-3 py-2 text-sm text-[var(--color-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--color-pine-600)]"
+              >
+                <option value="">No Section (Direct / General Item)</option>
+                {sections.map((sec) => (
+                  <option key={sec.id} value={sec.id}>
+                    {sec.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">

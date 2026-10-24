@@ -213,6 +213,7 @@ export class EventsRepository {
     members: (EventMember & { profile?: Profile })[];
     activities: ActivityEvent[];
     sections: (ChecklistSection & { items: ChecklistItem[] })[];
+    unsectionedItems: (ChecklistItem & { assignee?: Profile | null })[];
     userRole: 'owner' | 'participant';
   }> {
     if (!clerkUserId) {
@@ -249,6 +250,13 @@ export class EventsRepository {
       return { ...sec, items };
     });
 
+    const unsectionedItems = rawItems
+      .filter((it) => !it.section_id || !rawSections.some((s) => s.id === it.section_id))
+      .map((it) => ({
+        ...it,
+        assignee: it.assignee_id ? memoryStore.profiles.get(it.assignee_id) || null : null,
+      }));
+
     const activities = (memoryStore.activities.get(eventId) || []).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
@@ -258,6 +266,7 @@ export class EventsRepository {
       members: membersWithProfiles,
       activities,
       sections: sectionsWithItems,
+      unsectionedItems,
       userRole: member.role,
     };
   }
@@ -1000,6 +1009,18 @@ export class EventsRepository {
           notes: it.notes || undefined,
         })),
     }));
+
+    const unsectioned = items.filter((it) => !it.section_id || !sections.some((s) => s.id === it.section_id));
+    if (unsectioned.length > 0) {
+      templateSections.push({
+        title: 'General Gear',
+        items: unsectioned.map((it) => ({
+          title: it.title,
+          quantity: it.quantity || undefined,
+          notes: it.notes || undefined,
+        })),
+      });
+    }
 
     return this.createTemplate(clerkUserId, {
       name,

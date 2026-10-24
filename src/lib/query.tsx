@@ -103,6 +103,7 @@ export interface EventDetailsData {
   members: (EventMember & { profile?: Profile })[];
   activities: ActivityEvent[];
   sections: (ChecklistSection & { items: ChecklistItem[] })[];
+  unsectionedItems?: (ChecklistItem & { assignee?: Profile | null })[];
   userRole: 'owner' | 'participant';
 }
 
