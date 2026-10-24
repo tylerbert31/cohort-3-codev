@@ -992,7 +992,7 @@ export default function EventView({
                 aria-label="Trip actions menu"
                 aria-haspopup="true"
                 aria-expanded={isMenuOpen}
-                className="touch-target p-2 rounded-lg border border-canvas-border text-ink hover:bg-canvas-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
+                className="touch-target rounded-xl border border-white/20 bg-white/[.07] p-2 text-white transition-colors hover:bg-white/[.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d6ef9c] cursor-pointer"
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
