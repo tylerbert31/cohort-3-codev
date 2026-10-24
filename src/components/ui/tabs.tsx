@@ -32,10 +32,10 @@ export const Tabs: React.FC<TabsProps> = ({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        'grid w-full grid-cols-3 items-stretch gap-1 select-none',
+        'select-none',
         variant === 'segmented'
-          ? 'rounded-xl border border-canvas-border/80 bg-canvas-subtle/75 p-1'
-          : 'border-b border-canvas-border px-0',
+          ? 'grid w-full grid-cols-3 items-stretch gap-1 rounded-xl border border-canvas-border/80 bg-canvas-subtle/75 p-1'
+          : 'flex items-center gap-1 overflow-x-auto border-b border-canvas-border px-1 scrollbar-none',
         className
       )}
     >
@@ -73,8 +73,10 @@ export const Tabs: React.FC<TabsProps> = ({
               nextTab.click();
             }}
             className={cn(
-              'flex min-h-[44px] min-w-0 items-center justify-center gap-1.5 px-1.5 py-2 text-xs font-medium leading-tight transition-colors sm:px-3 sm:text-sm',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600',
+              'flex min-h-[44px] items-center gap-1.5 py-2 text-xs font-medium leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:text-sm',
+              variant === 'segmented'
+                ? 'min-w-0 justify-center rounded-lg px-1.5 sm:px-3'
+                : 'shrink-0 justify-start whitespace-nowrap border-b-2 -mb-[1px] px-3.5 sm:px-3.5',
               variant === 'segmented'
                 ? cn(
                     'rounded-lg border border-transparent',
@@ -83,7 +85,6 @@ export const Tabs: React.FC<TabsProps> = ({
                       : 'text-ink-muted hover:bg-white/60 hover:text-ink'
                   )
                 : cn(
-                    'border-b-2 -mb-[1px]',
                     isActive
                       ? 'border-pine-600 font-semibold text-pine-700'
                       : 'border-transparent text-ink-muted hover:border-canvas-muted hover:text-ink'
