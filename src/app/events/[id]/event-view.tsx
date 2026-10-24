@@ -870,7 +870,7 @@ export default function EventView({
   });
 
   return (
-    <div className="space-y-5 pb-24 sm:space-y-6 sm:pb-8">
+    <div className="space-y-5 pb-44 sm:space-y-6 sm:pb-8">
       {/* Back link + Status Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -1095,6 +1095,7 @@ export default function EventView({
             activeTab={activeTab}
             onChange={(id) => setActiveTab(id as 'checklist' | 'members' | 'activity')}
             ariaLabel="Trip Details Navigation"
+            variant="segmented"
           />
         </div>
       </div>
@@ -1105,40 +1106,36 @@ export default function EventView({
           {/* Streamlined Mobile & Desktop Toolbar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Segmented Filter Control */}
-            <div aria-label="Filter checklist items" className="grid min-h-12 w-full grid-cols-3 items-center rounded-xl border border-canvas-border/80 bg-[#e9ece3] p-1 text-sm sm:w-auto sm:min-w-[330px]">
-              <button
-                type="button"
-                onClick={() => setFilterMode('all')}
-                className={`min-h-10 min-w-0 rounded-lg px-1.5 py-2 text-center text-[13px] font-medium leading-tight transition-all sm:px-3 ${
-                  filterMode === 'all'
-                    ? 'bg-white text-ink shadow-xs font-semibold'
-                    : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                All ({totalItems})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('mine')}
-                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
-                  filterMode === 'mine'
-                    ? 'bg-white text-ink shadow-xs font-semibold'
-                    : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                Mine ({mineCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('unassigned')}
-                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
-                  filterMode === 'unassigned'
-                    ? 'bg-white text-ink shadow-xs font-semibold'
-                    : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                Unassigned ({unassignedCount})
-              </button>
+            <div role="group" aria-label="Filter checklist items" className="flex w-full items-center gap-2 overflow-x-auto py-0.5 scrollbar-none sm:w-auto">
+              {([
+                { id: 'all', label: 'All', count: totalItems },
+                { id: 'mine', label: 'Mine', count: mineCount },
+                { id: 'unassigned', label: 'Unassigned', count: unassignedCount },
+              ] as const).map((filter) => {
+                const selected = filterMode === filter.id;
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setFilterMode(filter.id)}
+                    className={cn(
+                      'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-2',
+                      selected
+                        ? 'border-pine-800 bg-pine-800 text-white shadow-sm'
+                        : 'border-canvas-border bg-[#fffefa] text-ink-muted hover:border-pine-500 hover:text-ink'
+                    )}
+                  >
+                    <span>{filter.label}</span>
+                    <span className={cn(
+                      'inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums',
+                      selected ? 'bg-white/15 text-white' : 'bg-canvas-subtle text-ink-muted'
+                    )}>
+                      {filter.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Compact Action Buttons */}
@@ -1151,7 +1148,7 @@ export default function EventView({
                     setSectionTitle('');
                     setIsAddSectionOpen(true);
                   }}
-                  className="gap-1.5 text-xs flex-1 sm:flex-initial h-9 font-medium"
+                  className="h-11 w-full justify-center text-sm font-medium sm:w-auto sm:justify-start"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add Category
@@ -1278,84 +1275,7 @@ export default function EventView({
                     </div>
                   )}
 
-                  {/* Progressive Disclosure Quick Add */}
-                  {!isLocked && (
-                    <>
-                      {activeQuickAddSection === 'unsectioned' ? (
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            handleQuickAddDirect();
-                          }}
-                          className="mt-3 pt-3 border-t border-canvas-border/70 flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
-                        >
-                          <input
-                            type="text"
-                            autoFocus
-                            placeholder="Add gear item to General Items..."
-                            value={quickAddDirectTitle}
-                            onChange={(e) => setQuickAddDirectTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Escape') {
-                                setActiveQuickAddSection(null);
-                              }
-                            }}
-                            className="flex-1 bg-white px-3 py-2 text-sm rounded-lg border border-canvas-border focus:border-pine-600 focus:outline-none transition-colors text-ink placeholder:text-ink-muted/70"
-                          />
-                          <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedSectionId(null);
-                                setItemTitle(quickAddDirectTitle);
-                                setItemQuantity('');
-                                setItemNotes('');
-                                setItemAssigneeId('');
-                                setItemDeadline('');
-                                setIsAddItemOpen(true);
-                              }}
-                              className="text-xs text-ink-muted hover:text-ink h-9 px-2"
-                              title="Open full item specifications"
-                            >
-                              <span>Details...</span>
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setActiveQuickAddSection(null)}
-                              className="text-xs h-9 px-2.5"
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="submit"
-                              size="sm"
-                              variant="primary"
-                              disabled={!quickAddDirectTitle.trim()}
-                              className="text-xs h-9 px-3 gap-1 cursor-pointer"
-                              aria-label="Save item"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>Add</span>
-                            </Button>
-                          </div>
-                        </form>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setActiveQuickAddSection('unsectioned')}
-                          className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border-t border-canvas-border/70 px-3 py-2 text-sm font-medium text-pine-800 transition-colors hover:bg-pine-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-pine-600" />
-                          <span>Add an item</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
+                                  </div>
               )}
 
               {/* Categorized Sections List */}
@@ -1388,6 +1308,17 @@ export default function EventView({
                       </div>
 
 
+                      {!isLocked && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDeleteSection(section)}
+                          aria-label={`Remove ${section.title} category`}
+                          title="Remove category"
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink-subtle transition-colors hover:bg-terracotta-50 hover:text-terracotta-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      )}
                     </div>
 
                     {/* Items List */}
@@ -1607,6 +1538,27 @@ export default function EventView({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {!isLocked && (
+        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-30 mx-auto max-w-sm sm:hidden">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSectionId(null);
+              setItemTitle('');
+              setItemQuantity('');
+              setItemNotes('');
+              setItemAssigneeId('');
+              setItemDeadline('');
+              setIsAddItemOpen(true);
+            }}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pine-800 px-5 text-base font-semibold text-white shadow-[0_10px_28px_rgba(23,59,46,.24)] transition-colors hover:bg-pine-700 active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-2"
+          >
+            <Plus className="h-5 w-5" aria-hidden="true" />
+            Add item
+          </button>
         </div>
       )}
 
