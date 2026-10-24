@@ -1200,15 +1200,7 @@ export default function EventView({
                 </div>
               </div>
               {isOwner && (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => setIsCompleteModalOpen(true)}
-                  className="shrink-0 gap-1.5 shadow-2xs cursor-pointer"
-                >
-                  <PackageCheck className="w-4 h-4" />
-                  <span>Seal & Wrap Up</span>
-                </Button>
+
               )}
             </div>
           )}
@@ -1258,26 +1250,7 @@ export default function EventView({
                       </span>
                     </div>
 
-                    {!isLocked && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedSectionId(null);
-                          setItemTitle('');
-                          setItemQuantity('');
-                          setItemNotes('');
-                          setItemAssigneeId('');
-                          setItemDeadline('');
-                          setIsAddItemOpen(true);
-                        }}
-                        className="h-8 px-2.5 text-xs gap-1 text-ink-muted hover:text-pine-700"
-                        title="Add item with full specs"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-pine-600" />
-                        <span>Add Item</span>
-                      </Button>
-                    )}
+
                   </div>
 
                   {/* Items List */}
@@ -1411,7 +1384,7 @@ export default function EventView({
                     className="overflow-hidden rounded-[20px] border border-canvas-border/80 bg-[#fffefa] p-4 sm:p-5"
                   >
                     {/* Section Header */}
-                    <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
+                    <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-canvas-border pb-3 sm:items-center">
                       <div className="flex min-w-0 items-start gap-2">
                         <Layers aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-pine-700" />
                         <h2 className="min-w-0 break-words text-base font-semibold leading-snug tracking-[-.035em] text-ink sm:text-lg">
@@ -1422,38 +1395,7 @@ export default function EventView({
                         </span>
                       </div>
 
-                      {!isLocked && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedSectionId(section.id);
-                              setItemTitle('');
-                              setItemQuantity('');
-                              setItemNotes('');
-                              setItemAssigneeId('');
-                              setItemDeadline('');
-                              setIsAddItemOpen(true);
-                            }}
-                            className="h-8 px-2 text-xs gap-1 text-ink-muted hover:text-pine-700"
-                            title="Add item with full specs"
-                          >
-                            <Plus className="w-3.5 h-3.5 text-pine-600" />
-                            <span>Add Item</span>
-                          </Button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDeleteSection(section)}
-                            aria-label={`Remove category ${section.title}`}
-                            title="Remove Category"
-                            className="touch-target p-2 rounded-lg text-ink-muted hover:text-terracotta-600 hover:bg-terracotta-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
                     </div>
 
                     {/* Items List */}
