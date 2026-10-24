@@ -68,6 +68,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
               event.preventDefault();
               const nextTab = tabButtons[nextIndex];
+              if (!nextTab) return;
               nextTab.focus();
               nextTab.click();
             }}
