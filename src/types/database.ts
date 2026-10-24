@@ -71,6 +71,7 @@ export interface ChecklistItem {
   notes: string | null;
   quantity: string | null;
   assignee_id: string | null;
+  deadline?: string | null;
   is_completed: boolean;
   completed_at: string | null;
   completed_by: string | null;

@@ -22,6 +22,7 @@ import { generateInviteCodeAction, revokeInviteCodeAction } from '@/server/actio
 import {
   createSectionAction,
   createItemAction,
+  updateItemAction,
   toggleItemCompletionAction,
   deleteItemAction,
   saveTemplateFromEventAction,
@@ -107,6 +108,18 @@ export default function EventView({
   const [itemQuantity, setItemQuantity] = useState('');
   const [itemNotes, setItemNotes] = useState('');
   const [itemAssigneeId, setItemAssigneeId] = useState('');
+  const [itemDeadline, setItemDeadline] = useState('');
+
+  // Item edit modal state (mobile & desktop)
+  const [editingItem, setEditingItem] = useState<(ChecklistItem & { assignee?: Profile | null }) | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editQuantity, setEditQuantity] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editAssigneeId, setEditAssigneeId] = useState('');
+  const [editDeadline, setEditDeadline] = useState('');
+  const [editSectionId, setEditSectionId] = useState<string | null>(null);
+  const [isSubmittingEditItem, setIsSubmittingEditItem] = useState(false);
+  const [isDeletingEditItem, setIsDeletingEditItem] = useState(false);
   const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
   const [quickAddDirectTitle, setQuickAddDirectTitle] = useState('');
 
@@ -136,6 +149,7 @@ export default function EventView({
 
   // Synchronize internal state with server props when updated
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEvent(initialEvent);
     setMembers(initialMembers);
     setActivities(initialActivities);
@@ -358,6 +372,7 @@ export default function EventView({
         quantity: itemQuantity.trim() || undefined,
         notes: itemNotes.trim() || undefined,
         assignee_id: itemAssigneeId || undefined,
+        deadline: itemDeadline ? itemDeadline : undefined,
       });
 
       if (res.success && res.data) {
@@ -382,6 +397,7 @@ export default function EventView({
         setItemQuantity('');
         setItemNotes('');
         setItemAssigneeId('');
+        setItemDeadline('');
         setIsAddItemOpen(false);
         broadcastUpdate();
       } else {
@@ -392,6 +408,119 @@ export default function EventView({
     } finally {
       setIsSubmittingItem(false);
     }
+  };
+  const handleOpenEditItem = (item: ChecklistItem & { assignee?: Profile | null }) => {
+    if (isLocked) return;
+    setEditingItem(item);
+    setEditTitle(item.title);
+    setEditQuantity(item.quantity || '');
+    setEditNotes(item.notes || '');
+    setEditAssigneeId(item.assignee_id || '');
+    setEditDeadline(item.deadline ? item.deadline.split('T')[0] : '');
+    setEditSectionId(item.section_id || null);
+    setActionError(null);
+  };
+
+  const handleCloseEditItem = () => {
+    setEditingItem(null);
+    setIsSubmittingEditItem(false);
+    setIsDeletingEditItem(false);
+  };
+
+  const handleSaveEditItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem || !editTitle.trim() || isLocked) return;
+
+    setIsSubmittingEditItem(true);
+    setActionError(null);
+
+    const oldSectionId = editingItem.section_id || null;
+    const newSectionId = editSectionId || null;
+
+    try {
+      const res = await updateItemAction({
+        eventId: event.id,
+        itemId: editingItem.id,
+        title: editTitle.trim(),
+        quantity: editQuantity.trim() || null,
+        notes: editNotes.trim() || null,
+        assignee_id: editAssigneeId || null,
+        deadline: editDeadline ? editDeadline : null,
+        section_id: newSectionId,
+      });
+
+      if (res.success && res.data) {
+        const updated = res.data;
+        const assignee = updated.assignee_id
+          ? members.find((m) => m.clerk_user_id === updated.assignee_id)?.profile || null
+          : null;
+        const updatedWithAssignee = { ...updated, assignee };
+
+        if (oldSectionId !== newSectionId) {
+          // Remove from old
+          if (oldSectionId) {
+            setSections((prev) =>
+              prev.map((sec) =>
+                sec.id === oldSectionId
+                  ? { ...sec, items: sec.items.filter((i) => i.id !== updated.id) }
+                  : sec
+              )
+            );
+          } else {
+            setUnsectionedItems((prev) => prev.filter((i) => i.id !== updated.id));
+          }
+
+          // Add to new
+          if (newSectionId) {
+            setSections((prev) =>
+              prev.map((sec) =>
+                sec.id === newSectionId
+                  ? { ...sec, items: [...sec.items, updatedWithAssignee] }
+                  : sec
+              )
+            );
+          } else {
+            setUnsectionedItems((prev) => [...prev, updatedWithAssignee]);
+          }
+        } else {
+          // Update in place
+          if (newSectionId) {
+            setSections((prev) =>
+              prev.map((sec) =>
+                sec.id === newSectionId
+                  ? {
+                      ...sec,
+                      items: sec.items.map((i) =>
+                        i.id === updated.id ? updatedWithAssignee : i
+                      ),
+                    }
+                  : sec
+              )
+            );
+          } else {
+            setUnsectionedItems((prev) =>
+              prev.map((i) => (i.id === updated.id ? updatedWithAssignee : i))
+            );
+          }
+        }
+
+        handleCloseEditItem();
+        broadcastUpdate();
+      } else {
+        setActionError(res.error || 'Failed to update item');
+      }
+    } catch {
+      setActionError('Failed to update item');
+    } finally {
+      setIsSubmittingEditItem(false);
+    }
+  };
+
+  const handleDeleteFromEditModal = async () => {
+    if (!editingItem || isLocked) return;
+    setIsDeletingEditItem(true);
+    await handleDeleteItem(editingItem.id, editingItem.section_id);
+    handleCloseEditItem();
   };
 
   const handleOpenInvite = async () => {
@@ -915,6 +1044,7 @@ export default function EventView({
                           title={item.title}
                           quantity={item.quantity || undefined}
                           notes={item.notes || undefined}
+                          deadline={item.deadline}
                           assigneeName={
                             item.assignee?.first_name
                               ? `${item.assignee.first_name} ${item.assignee.last_name || ''}`.trim()
@@ -924,6 +1054,7 @@ export default function EventView({
                           isCompleted={item.is_completed}
                           isEventLocked={isLocked}
                           onToggle={() => handleToggleItem(item.id, !item.is_completed)}
+                          onSelect={() => handleOpenEditItem(item)}
                           onDelete={() => handleDeleteItem(item.id, null)}
                         />
                       ))}
@@ -1021,6 +1152,7 @@ export default function EventView({
                             title={item.title}
                             quantity={item.quantity || undefined}
                             notes={item.notes || undefined}
+                            deadline={item.deadline}
                             assigneeName={
                               item.assignee?.first_name
                                 ? `${item.assignee.first_name} ${item.assignee.last_name || ''}`.trim()
@@ -1030,6 +1162,7 @@ export default function EventView({
                             isCompleted={item.is_completed}
                             isEventLocked={isLocked}
                             onToggle={() => handleToggleItem(item.id, !item.is_completed)}
+                            onSelect={() => handleOpenEditItem(item)}
                             onDelete={() => handleDeleteItem(item.id, section.id)}
                           />
                         ))}
@@ -1226,12 +1359,35 @@ export default function EventView({
             autoFocus
           />
 
-          <Input
-            label="Quantity / Units (Optional)"
-            placeholder="e.g. 2 units, 1 canister"
-            value={itemQuantity}
-            onChange={(e) => setItemQuantity(e.target.value)}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Quantity / Units (Optional)"
+              placeholder="e.g. 2 units, 1 canister"
+              value={itemQuantity}
+              onChange={(e) => setItemQuantity(e.target.value)}
+            />
+            <div className="space-y-1.5">
+              <label htmlFor="item-deadline-input" className="text-xs font-medium text-ink flex items-center justify-between">
+                <span>Deadline (Optional)</span>
+                {itemDeadline && (
+                  <button
+                    type="button"
+                    onClick={() => setItemDeadline('')}
+                    className="text-[11px] text-terracotta-600 hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </label>
+              <input
+                id="item-deadline-input"
+                type="date"
+                value={itemDeadline}
+                onChange={(e) => setItemDeadline(e.target.value)}
+                className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
+              />
+            </div>
+          </div>
 
           {sections.length > 0 && (
             <div className="space-y-1.5">
@@ -1299,6 +1455,138 @@ export default function EventView({
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Edit Gear Item Modal (Mobile & Desktop Popup) */}
+      <Dialog
+        isOpen={Boolean(editingItem)}
+        onClose={handleCloseEditItem}
+        title="Edit Gear Item"
+        description="Modify name, assignment, deadline, and specs."
+      >
+        {editingItem && (
+          <form onSubmit={handleSaveEditItem} className="space-y-3.5 py-1">
+            <Input
+              label="Gear / Item Name"
+              placeholder="e.g. 2-Burner Propane Stove"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              required
+              autoFocus
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Quantity / Units (Optional)"
+                placeholder="e.g. 2 units, 1 canister"
+                value={editQuantity}
+                onChange={(e) => setEditQuantity(e.target.value)}
+              />
+
+              <div className="space-y-1.5">
+                <label htmlFor="edit-item-deadline" className="text-xs font-medium text-ink flex items-center justify-between">
+                  <span>Deadline (Optional)</span>
+                  {editDeadline && (
+                    <button
+                      type="button"
+                      onClick={() => setEditDeadline('')}
+                      className="text-[11px] text-terracotta-600 hover:underline"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </label>
+                <input
+                  id="edit-item-deadline"
+                  type="date"
+                  value={editDeadline}
+                  onChange={(e) => setEditDeadline(e.target.value)}
+                  className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="edit-assignee-select" className="text-xs font-medium text-ink">
+                Assign Responsible Member
+              </label>
+              <select
+                id="edit-assignee-select"
+                value={editAssigneeId}
+                onChange={(e) => setEditAssigneeId(e.target.value)}
+                className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
+              >
+                <option value="">Unassigned (Anyone can pack)</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.clerk_user_id}>
+                    {m.profile?.first_name
+                      ? `${m.profile.first_name} ${m.profile.last_name || ''}`.trim()
+                      : m.clerk_user_id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {sections.length > 0 && (
+              <div className="space-y-1.5">
+                <label htmlFor="edit-category-select" className="text-xs font-medium text-ink">
+                  Category (Optional)
+                </label>
+                <select
+                  id="edit-category-select"
+                  value={editSectionId || ''}
+                  onChange={(e) => setEditSectionId(e.target.value || null)}
+                  className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
+                >
+                  <option value="">No Category (Direct Item)</option>
+                  {sections.map((sec) => (
+                    <option key={sec.id} value={sec.id}>
+                      {sec.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <Input
+              label="Notes / Specs (Optional)"
+              placeholder="e.g. Bring extra windscreen, 16oz fuel"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+            />
+
+            <div className="flex items-center justify-between pt-3 border-t border-canvas-border">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-terracotta-600 hover:text-terracotta-700 hover:bg-terracotta-50"
+                onClick={handleDeleteFromEditModal}
+                disabled={isDeletingEditItem || isSubmittingEditItem}
+              >
+                {isDeletingEditItem ? 'Deleting...' : 'Delete Item'}
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCloseEditItem}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  isLoading={isSubmittingEditItem}
+                  disabled={!editTitle.trim()}
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </form>
+        )}
       </Dialog>
 
       {/* Save Template Modal */}

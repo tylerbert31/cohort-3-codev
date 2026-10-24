@@ -104,6 +104,7 @@ export async function createItemAction(input: {
   notes?: string | null;
   quantity?: string | null;
   assignee_id?: string | null;
+  deadline?: string | null;
 }): Promise<ActionResponse<ChecklistItem>> {
   try {
     const { userId } = await auth();
@@ -117,6 +118,7 @@ export async function createItemAction(input: {
       notes: input.notes,
       quantity: input.quantity,
       assignee_id: input.assignee_id,
+      deadline: input.deadline,
     });
 
     revalidatePath(`/events/${input.eventId}`);
@@ -136,6 +138,7 @@ export async function updateItemAction(input: {
   quantity?: string | null;
   section_id?: string | null;
   assignee_id?: string | null;
+  deadline?: string | null;
 }): Promise<ActionResponse<ChecklistItem>> {
   try {
     const { userId } = await auth();
@@ -153,6 +156,7 @@ export async function updateItemAction(input: {
         quantity: input.quantity,
         section_id: input.section_id,
         assignee_id: input.assignee_id,
+        deadline: input.deadline,
       }
     );
 

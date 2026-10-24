@@ -702,6 +702,7 @@ export class EventsRepository {
       notes?: string | null;
       quantity?: string | null;
       assignee_id?: string | null;
+      deadline?: string | null;
     }
   ): Promise<ChecklistItem> {
     const event = memoryStore.events.get(eventId);
@@ -734,6 +735,7 @@ export class EventsRepository {
       notes: payload.notes?.trim() || null,
       quantity: payload.quantity?.trim() || null,
       assignee_id: payload.assignee_id || null,
+      deadline: payload.deadline?.trim() || null,
       is_completed: false,
       completed_at: null,
       completed_by: null,
@@ -772,6 +774,7 @@ export class EventsRepository {
       quantity?: string | null;
       section_id?: string | null;
       assignee_id?: string | null;
+      deadline?: string | null;
     }
   ): Promise<ChecklistItem> {
     const event = memoryStore.events.get(eventId);
@@ -824,6 +827,10 @@ export class EventsRepository {
         };
         (memoryStore.activities.get(eventId) || []).push(activity);
       }
+    }
+
+    if (payload.deadline !== undefined) {
+      item.deadline = payload.deadline?.trim() || null;
     }
 
     item.updated_at = new Date().toISOString();

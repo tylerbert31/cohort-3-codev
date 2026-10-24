@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Check, User, Lock, Trash2 } from 'lucide-react';
+import { Check, User, Lock, Trash2, Calendar } from 'lucide-react';
 
 export interface ChecklistRowProps {
   id: string;
@@ -9,6 +9,7 @@ export interface ChecklistRowProps {
   quantity?: number | string;
   assigneeName?: string;
   assigneeImageUrl?: string;
+  deadline?: string | null;
   isCompleted?: boolean;
   isEventLocked?: boolean;
   onToggle?: (id: string, nextState: boolean) => void;
@@ -23,6 +24,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
   quantity,
   assigneeName,
   assigneeImageUrl,
+  deadline,
   isCompleted = false,
   isEventLocked = false,
   onToggle,
@@ -50,7 +52,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
       onKeyDown={handleKeyDown}
       onClick={() => onSelect?.(id)}
       className={cn(
-        'group flex items-center justify-between gap-3 p-3.5 rounded-xl border bg-white transition-all select-none',
+        'group flex items-center justify-between gap-3 p-3.5 rounded-xl border bg-white transition-all select-none cursor-pointer active:scale-[0.99]',
         'border-canvas-border hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600',
         isCompleted && 'bg-canvas-subtle/50 opacity-85',
         isEventLocked && 'cursor-default bg-locked-surface/30 hover:border-canvas-border'
@@ -92,6 +94,12 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
           {quantity && (
             <span className="shrink-0 px-2 py-0.5 text-xs font-mono font-medium rounded-md bg-canvas-subtle text-ink-muted border border-canvas-border">
               {quantity}
+            </span>
+          )}
+          {deadline && (
+            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-md bg-pine-50 text-pine-800 border border-pine-200">
+              <Calendar className="w-3 h-3 text-pine-600" />
+              <span>{deadline.split('T')[0]}</span>
             </span>
           )}
         </div>
