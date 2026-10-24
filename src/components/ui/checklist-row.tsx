@@ -144,23 +144,19 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
       {/* Bottom Metadata Line: Aligned under the title */}
       {hasMetadata && (
         <div
-          role="button"
-          tabIndex={isEventLocked ? -1 : 0}
-          onClick={() => onSelect?.(id)}
-          onKeyDown={handleSelectKeyDown}
           className={cn(
             'flex flex-wrap items-center gap-2 pl-9 text-sm cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:pl-10',
             isEventLocked && 'cursor-default'
           )}
         >
           {quantity && (
-            <span className="shrink-0 px-2 py-0.5 text-[11px] font-mono font-medium rounded-md bg-canvas-subtle text-ink-muted border border-canvas-border/70">
+            <span className="shrink-0 px-2 py-0.5 text-xs font-mono font-medium rounded-md bg-canvas-subtle text-ink-muted border border-canvas-border/70">
               {quantity}
             </span>
           )}
 
           {deadline && (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-md bg-pine-50 text-pine-800 border border-pine-200">
+            <span className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-pine-50 text-pine-800 border border-pine-200">
               <Calendar className="w-3 h-3 text-pine-600" />
               <span>{deadline.split('T')[0]}</span>
             </span>
@@ -168,7 +164,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
 
           {assigneeName && (
             <div
-              className="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-canvas-subtle border border-canvas-border/70 text-[11px] text-ink-muted"
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-canvas-border/70 bg-canvas-subtle px-2.5 py-1 text-xs text-ink-muted"
               title={`Assigned to ${assigneeName}`}
             >
               {assigneeImageUrl ? (
@@ -176,12 +172,12 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
                 <img
                   src={assigneeImageUrl}
                   alt={assigneeName}
-                  className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                  className="h-4 w-4 rounded-full object-cover shrink-0"
                 />
               ) : (
-                <User className="w-3 h-3 shrink-0" aria-hidden="true" />
+                <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               )}
-              <span className="max-w-[110px] truncate">{assigneeName}</span>
+              <span className="max-w-[130px] truncate">{assigneeName}</span>
             </div>
           )}
 
