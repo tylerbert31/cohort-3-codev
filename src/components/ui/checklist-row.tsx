@@ -59,10 +59,10 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
   return (
     <div
       className={cn(
-        'group flex flex-col gap-2 rounded-2xl border bg-[#fffefa] p-3.5 shadow-[0_2px_10px_rgba(23,43,36,.025)] transition-colors select-none sm:gap-2.5 sm:p-4',
-        'border-canvas-border/80 hover:border-pine-500/70 hover:shadow-[0_5px_16px_rgba(23,43,36,.045)]',
-        isCompleted && 'bg-canvas-subtle/40 border-canvas-border/60 opacity-80',
-        isEventLocked && 'cursor-default bg-locked-surface/30 hover:border-canvas-border hover:shadow-none'
+        'group flex flex-col gap-2 border-b border-canvas-border/70 bg-transparent px-1 py-3 transition-colors select-none last:border-b-0 sm:gap-2.5 sm:py-3.5',
+        'hover:bg-pine-50/35',
+        isCompleted && 'opacity-90',
+        isEventLocked && 'cursor-default'
       )}
     >
       {/* Top Primary Line: Checkbox + Title (Clickable) + Actions */}
@@ -78,7 +78,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
             onClick={handleCheckboxClick}
             onKeyDown={handleCheckboxKeyDown}
             className={cn(
-              'h-6 w-6 rounded-full border flex items-center justify-center shrink-0 transition-colors cursor-pointer',
+              'h-7 w-7 rounded-full border flex items-center justify-center shrink-0 transition-colors cursor-pointer',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-1',
               isCompleted
                 ? 'bg-pine-600 border-pine-600 text-white shadow-2xs'
@@ -103,7 +103,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
           >
             <span
               className={cn(
-                'block break-words text-[14px] font-semibold leading-snug text-ink transition-colors line-clamp-2 sm:text-[15px]',
+                'block break-words text-[15px] font-medium leading-snug text-ink transition-colors sm:text-base',
                 isCompleted && 'line-through text-ink-muted'
               )}
             >
@@ -149,7 +149,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
           onClick={() => onSelect?.(id)}
           onKeyDown={handleSelectKeyDown}
           className={cn(
-            'flex flex-wrap items-center gap-1.5 pl-8 text-xs cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:pl-9',
+            'flex flex-wrap items-center gap-2 pl-9 text-sm cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:pl-10',
             isEventLocked && 'cursor-default'
           )}
         >
