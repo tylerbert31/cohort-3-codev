@@ -1072,10 +1072,10 @@ export default function EventView({
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-ink">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-pine-600" />
-              <span>Group packing progress</span>
+              <span>Packing progress</span>
             </span>
             <span className="font-mono">
-              {completedItems} of {totalItems} items packed ({overallProgressPct}%)
+              {completedItems}/{totalItems} packed · {overallProgressPct}%
             </span>
           </div>
           <Progress
@@ -1088,9 +1088,9 @@ export default function EventView({
         <div className="px-4 pb-4 pt-1 sm:px-7 sm:pb-6">
           <Tabs
             tabs={[
-              { id: 'checklist', label: 'Packing List', count: totalItems },
-              { id: 'members', label: 'Cohort Members', count: members.length },
-              { id: 'activity', label: 'Activity Feed', count: activities.length },
+              { id: 'checklist', label: 'Packing List', mobileLabel: 'List', count: totalItems },
+              { id: 'members', label: 'Cohort Members', mobileLabel: 'People', count: members.length },
+              { id: 'activity', label: 'Activity Feed', mobileLabel: 'Activity', count: activities.length },
             ]}
             activeTab={activeTab}
             onChange={(id) => setActiveTab(id as 'checklist' | 'members' | 'activity')}
@@ -1101,15 +1101,15 @@ export default function EventView({
 
       {/* Tab Panels */}
       {activeTab === 'checklist' && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-5">
           {/* Streamlined Mobile & Desktop Toolbar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Segmented Filter Control */}
-            <div className="flex w-full items-center rounded-xl border border-canvas-border/80 bg-[#e9ece3] p-1 text-xs sm:w-auto">
+            <div aria-label="Filter checklist items" className="grid min-h-12 w-full grid-cols-3 items-center rounded-xl border border-canvas-border/80 bg-[#e9ece3] p-1 text-sm sm:w-auto sm:min-w-[330px]">
               <button
                 type="button"
                 onClick={() => setFilterMode('all')}
-                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
+                className={`min-h-10 min-w-0 rounded-lg px-1.5 py-2 text-center text-[13px] font-medium leading-tight transition-all sm:px-3 ${
                   filterMode === 'all'
                     ? 'bg-white text-ink shadow-xs font-semibold'
                     : 'text-ink-muted hover:text-ink'
@@ -1245,16 +1245,16 @@ export default function EventView({
             <div className="space-y-6">
               {/* Direct Unsectioned Items Card */}
               {unsectionedItems.length > 0 && (
-                <div className="overflow-hidden rounded-[22px] border border-canvas-border/80 bg-[#fffefa] p-4 shadow-[0_4px_18px_rgba(23,43,36,.025)] transition-colors sm:p-5">
+                <div className="overflow-hidden rounded-[20px] border border-canvas-border/80 bg-[#fffefa] p-4 sm:p-5">
                   {/* Card Header */}
-                  <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
-                    <div className="flex items-center gap-2">
-                      <PackageCheck className="w-4 h-4 text-pine-600" />
-                      <h2 className="text-xl font-semibold tracking-[-.04em] text-ink">
-                        {sections.length > 0 ? 'General Items (No Category)' : 'Checklist Items'}
+                  <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-canvas-border pb-3 sm:items-center">
+                    <div className="flex min-w-0 items-start gap-2">
+                      <PackageCheck aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-pine-700" />
+                      <h2 className="min-w-0 break-words text-base font-semibold leading-snug tracking-[-.035em] text-ink sm:text-lg">
+                        {sections.length > 0 ? 'General items' : 'Checklist items'}
                       </h2>
-                      <span className="text-xs text-ink-muted font-mono">
-                        ({unsectionedItems.filter((i) => i.is_completed).length}/{unsectionedItems.length})
+                      <span className="shrink-0 rounded-full bg-canvas-subtle px-2 py-1 text-xs font-medium tabular-nums text-ink-muted">
+                        {unsectionedItems.filter((i) => i.is_completed).length} of {unsectionedItems.length}
                       </span>
                     </div>
 
@@ -1288,7 +1288,7 @@ export default function EventView({
                         : `No direct items matching "${filterMode}".`}
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="divide-y divide-canvas-border/70">
                       {filteredUnsectionedItems.map((item) => (
                         <ChecklistRow
                           key={item.id}
@@ -1382,10 +1382,10 @@ export default function EventView({
                         <button
                           type="button"
                           onClick={() => setActiveQuickAddSection('unsectioned')}
-                          className="w-full mt-3 py-2 px-3 rounded-lg border border-dashed border-canvas-border/80 text-xs font-medium text-ink-muted hover:text-pine-700 hover:border-pine-300 hover:bg-pine-50/50 transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
+                          className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border-t border-canvas-border/70 px-3 py-2 text-sm font-medium text-pine-800 transition-colors hover:bg-pine-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
                         >
                           <Plus className="w-3.5 h-3.5 text-pine-600" />
-                          <span>Add item to General Items...</span>
+                          <span>Add an item</span>
                         </button>
                       )}
                     </>
@@ -1408,17 +1408,17 @@ export default function EventView({
                 return (
                   <div
                     key={section.id}
-                    className="rounded-xl border border-canvas-border/80 bg-canvas-card p-3.5 sm:p-5 transition-all shadow-2xs"
+                    className="overflow-hidden rounded-[20px] border border-canvas-border/80 bg-[#fffefa] p-4 sm:p-5"
                   >
                     {/* Section Header */}
                     <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
-                      <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-pine-600" />
-                        <h2 className="text-base font-serif font-bold text-ink">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <Layers aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-pine-700" />
+                        <h2 className="min-w-0 break-words text-base font-semibold leading-snug tracking-[-.035em] text-ink sm:text-lg">
                           {section.title}
                         </h2>
-                        <span className="text-xs text-ink-muted font-mono">
-                          ({secCompleted}/{secTotal})
+                        <span className="shrink-0 rounded-full bg-canvas-subtle px-2 py-1 text-xs font-medium tabular-nums text-ink-muted">
+                          {secCompleted} of {secTotal}
                         </span>
                       </div>
 
@@ -1464,7 +1464,7 @@ export default function EventView({
                           : `No items matching "${filterMode}" in this category.`}
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="divide-y divide-canvas-border/70">
                         {filteredItems.map((item) => (
                           <ChecklistRow
                             key={item.id}
