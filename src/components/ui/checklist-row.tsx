@@ -143,12 +143,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
 
       {/* Bottom Metadata Line: Aligned under the title */}
       {hasMetadata && (
-        <div
-          className={cn(
-            'flex flex-wrap items-center gap-2 pl-9 text-sm cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:pl-10',
-            isEventLocked && 'cursor-default'
-          )}
-        >
+        <div className="flex flex-wrap items-center gap-2 pl-9 text-sm sm:pl-10">
           {quantity && (
             <span className="shrink-0 px-2 py-0.5 text-xs font-mono font-medium rounded-md bg-canvas-subtle text-ink-muted border border-canvas-border/70">
               {quantity}
