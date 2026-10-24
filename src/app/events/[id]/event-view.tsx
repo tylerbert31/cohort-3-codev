@@ -198,6 +198,7 @@ export default function EventView({
     completedSectionItems + unsectionedItems.filter((i) => i.is_completed).length;
 
   const overallProgressPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+  const hasExistingItemsOrCategories = sections.length > 0 || totalItems > 0;
 
   // Filter counts for segmented control
   const allItemsList = [
@@ -719,6 +720,14 @@ export default function EventView({
   };
 
   const handleOpenApplyTemplate = async () => {
+    if (hasExistingItemsOrCategories) {
+      setActionError(
+        'Cannot apply template to an event that already has items or categories. Templates can only be applied to empty trips to avoid conflicts or duplicates.'
+      );
+      setIsMenuOpen(false);
+      return;
+    }
+
     setIsApplyTemplateOpen(true);
     setIsMenuOpen(false);
 
@@ -737,6 +746,14 @@ export default function EventView({
 
   const handleApplyTemplate = async () => {
     if (!selectedTemplateId || isLocked) return;
+
+    if (hasExistingItemsOrCategories) {
+      setActionError(
+        'Cannot apply template: trip already has items or categories. Clear the trip first to apply a template without conflicts.'
+      );
+      setIsApplyTemplateOpen(false);
+      return;
+    }
 
     setIsApplyingTemplate(true);
     setActionError(null);
@@ -891,10 +908,23 @@ export default function EventView({
                       <button
                         type="button"
                         onClick={handleOpenApplyTemplate}
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center gap-2"
+                        disabled={hasExistingItemsOrCategories}
+                        title={
+                          hasExistingItemsOrCategories
+                            ? 'Templates can only be applied to empty trips with no items or categories'
+                            : 'Apply saved template'
+                        }
+                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center justify-between disabled:opacity-45 disabled:cursor-not-allowed"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Apply Template</span>
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Apply Template</span>
+                        </div>
+                        {hasExistingItemsOrCategories && (
+                          <span className="text-[10px] text-ink-muted bg-canvas-subtle px-1.5 py-0.5 rounded border border-canvas-border font-medium">
+                            Empty only
+                          </span>
+                        )}
                       </button>
                     </>
                   )}
@@ -1839,9 +1869,25 @@ export default function EventView({
         description="Add sections and items from one of your saved templates into this trip."
       >
         <div className="space-y-4 py-1">
-          {userTemplates.length === 0 ? (
+          {hasExistingItemsOrCategories ? (
+            <div className="space-y-4">
+              <InlineAlert
+                type="error"
+                message="This trip already has items or categories. Applying a template is forbidden to avoid conflicts or duplicate items. Templates can only be applied to empty trips."
+              />
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsApplyTemplateOpen(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          ) : userTemplates.length === 0 ? (
             <div className="py-4 text-center text-sm text-ink-muted">
-              You haven&apos;t saved any templates yet. Create templates from the Templates tab.
+              You haven&apos;t saved any templates yet. To create a template, open an active or past trip with items and select &ldquo;Save as Template&rdquo; from the trip menu.
             </div>
           ) : (
             <>
@@ -1877,6 +1923,7 @@ export default function EventView({
                   variant="primary"
                   onClick={handleApplyTemplate}
                   isLoading={isApplyingTemplate}
+                  disabled={hasExistingItemsOrCategories}
                 >
                   Apply to Trip
                 </Button>

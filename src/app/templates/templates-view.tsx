@@ -7,13 +7,11 @@ import type {
   TemplateSection,
   TemplateItem,
 } from '@/types/database';
-import { createTemplateAction, deleteTemplateAction } from '@/server/actions/checklist';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog } from '@/components/ui/dialog';
+import { deleteTemplateAction } from '@/server/actions/checklist';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { EmptyState } from '@/components/ui/state-views';
-import { Plus, Trash2, Layers, BookmarkCheck } from 'lucide-react';
+import { Trash2, Layers, BookmarkCheck, ArrowUpRight } from 'lucide-react';
+import Link from 'next/link';
 
 interface TemplatesViewProps {
   initialTemplates: (ChecklistTemplate & {
@@ -24,39 +22,7 @@ interface TemplatesViewProps {
 export default function TemplatesView({ initialTemplates }: TemplatesViewProps) {
   const router = useRouter();
   const [templates, setTemplates] = useState(initialTemplates);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [templateDesc, setTemplateDesc] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!templateName.trim()) return;
-
-    setIsSubmitting(true);
-    setErrorMsg(null);
-
-    try {
-      const res = await createTemplateAction({
-        name: templateName.trim(),
-        description: templateDesc.trim() || undefined,
-      });
-
-      if (res.success && res.data) {
-        setIsCreateOpen(false);
-        setTemplateName('');
-        setTemplateDesc('');
-        router.refresh();
-      } else {
-        setErrorMsg(res.error || 'Failed to create template.');
-      }
-    } catch {
-      setErrorMsg('Failed to create template.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleDelete = async (templateId: string) => {
     // Optimistic UI update
@@ -82,22 +48,18 @@ export default function TemplatesView({ initialTemplates }: TemplatesViewProps) 
           <h1 className="text-2xl sm:text-3xl font-serif font-bold text-ink tracking-tight">
             Checklist Templates
           </h1>
-          <p className="text-sm text-ink-muted mt-1 max-w-lg">
-            Save and reuse your gear loadouts across multiple trips (e.g. Backcountry Trekking, Weekend Car Camping).
+          <p className="text-sm text-ink-muted mt-1 max-w-xl">
+            Reusable loadouts copied from your trips. To create a new template, open any trip with items and choose <span className="font-semibold text-ink">&ldquo;Save as Template&rdquo;</span> from the trip menu.
           </p>
         </div>
 
-        <Button
-          onClick={() => {
-            setErrorMsg(null);
-            setIsCreateOpen(true);
-          }}
-          className="self-start sm:self-auto gap-1.5"
-          size="sm"
+        <Link
+          href="/"
+          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-canvas-border bg-canvas-subtle hover:bg-canvas text-ink text-xs font-medium transition-colors"
         >
-          <Plus className="w-4 h-4" />
-          <span>New Template</span>
-        </Button>
+          <span>View Trips</span>
+          <ArrowUpRight className="w-3.5 h-3.5 text-ink-muted" />
+        </Link>
       </div>
 
       {errorMsg && (
@@ -108,9 +70,9 @@ export default function TemplatesView({ initialTemplates }: TemplatesViewProps) 
       {templates.length === 0 ? (
         <EmptyState
           title="No packing templates yet"
-          description="Build reusable templates so you don't have to assemble camping gear lists from scratch every trip."
-          actionLabel="Create First Template"
-          onAction={() => setIsCreateOpen(true)}
+          description="Templates cannot be created manually from scratch. To create a template, build your gear checklist in any active or past trip, then select 'Save as Template' from the trip menu."
+          actionLabel="Browse Trips"
+          onAction={() => router.push('/')}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -185,50 +147,6 @@ export default function TemplatesView({ initialTemplates }: TemplatesViewProps) 
           })}
         </div>
       )}
-
-      {/* Create Template Dialog */}
-      <Dialog
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        title="Create Checklist Template"
-        description="Build a reusable master checklist template for expeditions."
-      >
-        <form onSubmit={handleCreate} className="space-y-4 py-1">
-          <Input
-            label="Template Name"
-            placeholder="e.g. 3-Day Alpine Backpacking"
-            value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
-            required
-            autoFocus
-          />
-
-          <Input
-            label="Description (Optional)"
-            placeholder="e.g. Gear checklist for high-elevation summer camping"
-            value={templateDesc}
-            onChange={(e) => setTemplateDesc(e.target.value)}
-          />
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsCreateOpen(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              isLoading={isSubmitting}
-            >
-              Create Template
-            </Button>
-          </div>
-        </form>
-      </Dialog>
     </div>
   );
 }

@@ -1033,6 +1033,10 @@ export class EventsRepository {
     const sections = memoryStore.sections.get(eventId) || [];
     const items = memoryStore.items.get(eventId) || [];
 
+    if (sections.length === 0 && items.length === 0) {
+      throw new Error('Cannot save template from an empty trip. Add items or categories before creating a template.');
+    }
+
     const templateSections = sections.map((sec) => ({
       title: sec.title,
       items: items
@@ -1095,6 +1099,12 @@ export class EventsRepository {
 
     const existingSections = memoryStore.sections.get(eventId) || [];
     const existingItems = memoryStore.items.get(eventId) || [];
+
+    if (existingSections.length > 0 || existingItems.length > 0) {
+      throw new Error(
+        'Cannot apply template to an event that already has items or categories. Templates can only be applied to empty events to avoid conflicts or duplicates.'
+      );
+    }
 
     let addedItemsCount = 0;
     const now = new Date().toISOString();

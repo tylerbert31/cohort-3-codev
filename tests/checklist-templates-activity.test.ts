@@ -318,7 +318,7 @@ describe('Phase 05 — Checklist, Templates & Activity Suite', () => {
       expect(saved?.sections[0].items[0].title).toBe('6-Person Tent');
     });
 
-    it('applies a template to an event without modifying the template or corrupting existing event data', async () => {
+    it('applies a template to a clean empty event without modifying the template', async () => {
       // Create template
       const template = await EventsRepository.createTemplate(OWNER_ID, {
         name: 'Desert Survival Kit',
@@ -330,23 +330,57 @@ describe('Phase 05 — Checklist, Templates & Activity Suite', () => {
         ],
       });
 
-      // Existing event section
-      await EventsRepository.createSection(OWNER_ID, eventId, { title: 'Pre-existing Section' });
+      // Create a fresh clean empty event
+      const { event: cleanTarget } = await EventsRepository.createEvent(OWNER_ID, {
+        title: 'Empty Expedition',
+      });
 
       // Apply template
-      const result = await EventsRepository.applyTemplateToEvent(OWNER_ID, eventId, template.id);
+      const result = await EventsRepository.applyTemplateToEvent(OWNER_ID, cleanTarget.id, template.id);
       expect(result.addedSectionsCount).toBe(1);
       expect(result.addedItemsCount).toBe(1);
 
-      // Target event should now have both sections
-      const details = await EventsRepository.getEvent(OWNER_ID, eventId);
-      expect(details.sections).toHaveLength(2);
-      expect(details.sections[0].title).toBe('Pre-existing Section');
-      expect(details.sections[1].title).toBe('Water Supplies');
+      // Target event should now have the section and item
+      const details = await EventsRepository.getEvent(OWNER_ID, cleanTarget.id);
+      expect(details.sections).toHaveLength(1);
+      expect(details.sections[0].title).toBe('Water Supplies');
+      expect(details.sections[0].items[0].title).toBe('Electrolyte Tablets');
 
       // The original template remains untouched
       const templates = await EventsRepository.listTemplatesForUser(OWNER_ID);
       expect(templates[0].sections).toHaveLength(1);
+    });
+
+    it('strictly forbids applying templates if the event already has items or categories to avoid conflict or duplicates', async () => {
+      const template = await EventsRepository.createTemplate(OWNER_ID, {
+        name: 'Camp Kit',
+        sections: [
+          {
+            title: 'Kitchen',
+            items: [{ title: 'Stove' }],
+          },
+        ],
+      });
+
+      // Case A: Event already has a section
+      const { event: targetWithSection } = await EventsRepository.createEvent(OWNER_ID, {
+        title: 'Trip With Section',
+      });
+      await EventsRepository.createSection(OWNER_ID, targetWithSection.id, { title: 'Pre-existing Section' });
+
+      await expect(
+        EventsRepository.applyTemplateToEvent(OWNER_ID, targetWithSection.id, template.id)
+      ).rejects.toThrowError(/Cannot apply template to an event that already has items or categories/);
+
+      // Case B: Event already has a direct unsectioned item
+      const { event: targetWithItem } = await EventsRepository.createEvent(OWNER_ID, {
+        title: 'Trip With Direct Item',
+      });
+      await EventsRepository.createItem(OWNER_ID, targetWithItem.id, { title: 'Direct Flashlight' });
+
+      await expect(
+        EventsRepository.applyTemplateToEvent(OWNER_ID, targetWithItem.id, template.id)
+      ).rejects.toThrowError(/Cannot apply template to an event that already has items or categories/);
     });
 
     it('strictly forbids applying templates to completed events', async () => {

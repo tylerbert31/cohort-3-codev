@@ -224,25 +224,23 @@ export async function deleteItemAction(input: {
 // TEMPLATE SERVER ACTIONS
 // ============================================================================
 
-export async function createTemplateAction(input: {
-  name: string;
-  description?: string | null;
-  sections?: { title: string; items?: { title: string; quantity?: string; notes?: string }[] }[];
-}): Promise<ActionResponse<ChecklistTemplate>> {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return { success: false, error: 'Authentication required.', code: 'UNAUTHORIZED' };
-    }
-
-    const template = await EventsRepository.createTemplate(userId, input);
-
-    revalidatePath('/templates');
-    return { success: true, data: template };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to create template.';
-    return { success: false, error: message };
+/**
+ * Manual template creation is disabled.
+ * Templates must be created by copying from an existing event via saveTemplateFromEventAction.
+ */
+export async function createTemplateAction(
+  input?: {
+    name?: string;
+    description?: string | null;
+    sections?: { title: string; items?: { title: string; quantity?: string; notes?: string }[] }[];
   }
+): Promise<ActionResponse<ChecklistTemplate>> {
+  void input;
+  return {
+    success: false,
+    error: 'Manual template creation is disabled. Templates can only be created by copying from an existing event.',
+    code: 'FORBIDDEN',
+  };
 }
 
 export async function saveTemplateFromEventAction(input: {
