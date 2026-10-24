@@ -1072,7 +1072,7 @@ export default function EventView({
 
       {/* Tab Panels */}
       {activeTab === 'checklist' && (
-        <div className="space-y-4 sm:space-y-5">
+        <div id="panel-checklist" role="tabpanel" aria-labelledby="tab-checklist" tabIndex={0} className="space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:space-y-5">
           {/* Streamlined Mobile & Desktop Toolbar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Segmented Filter Control */}
@@ -1090,7 +1090,7 @@ export default function EventView({
                     aria-pressed={selected}
                     onClick={() => setFilterMode(filter.id)}
                     className={cn(
-                      'inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-2',
+                      'inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-2 sm:gap-2 sm:px-3',
                       selected
                         ? 'border-pine-800 bg-pine-800 text-white shadow-sm'
                         : 'border-canvas-border bg-[#fffefa] text-ink-muted hover:border-pine-500 hover:text-ink'
@@ -1317,7 +1317,7 @@ export default function EventView({
                           : `No items matching "${filterMode}" in this category.`}
                       </div>
                     ) : (
-                      <div className="divide-y divide-canvas-border/70">
+                      <div className="space-y-0">
                         {filteredItems.map((item) => (
                           <ChecklistRow
                             key={item.id}
@@ -1434,8 +1434,8 @@ export default function EventView({
 
       {/* Cohort Members Tab */}
       {activeTab === 'members' && (
-        <div className="rounded-[24px] border border-canvas-border bg-[#fffefa] p-5 shadow-[0_8px_28px_rgba(23,43,36,.04)] sm:p-7">
-          <div className="flex items-center justify-between mb-4">
+        <div id="panel-members" role="tabpanel" aria-labelledby="tab-members" tabIndex={0} className="rounded-[24px] border border-canvas-border bg-[#fffefa] p-5 shadow-[0_8px_28px_rgba(23,43,36,.04)] outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:p-7">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-serif font-bold text-ink">Expedition Cohort</h2>
               <p className="text-xs text-ink-muted">Friends and travelers sharing this packing list.</p>
@@ -1492,7 +1492,7 @@ export default function EventView({
 
       {/* Activity Log Tab */}
       {activeTab === 'activity' && (
-        <div className="rounded-xl border border-canvas-border bg-canvas-card p-6">
+        <div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" tabIndex={0} className="rounded-[24px] border border-canvas-border bg-[#fffefa] p-5 shadow-[0_8px_28px_rgba(23,43,36,.04)] outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:p-7">
           <h2 className="mb-1 text-xl font-semibold tracking-[-.04em] text-ink">Trip Timeline</h2>
           <p className="text-xs text-ink-muted mb-5">Audit trail of group updates and packing progress.</p>
           {activities.length === 0 ? (
@@ -1530,7 +1530,7 @@ export default function EventView({
       )}
 
       {!isLocked && (
-        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-30 mx-auto max-w-sm sm:hidden">
+        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)_+_6.25rem)] z-30 mx-auto max-w-sm sm:hidden">
           <button
             type="button"
             onClick={() => {
