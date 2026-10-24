@@ -32,7 +32,7 @@ Keep Cohort’s “Trailhead Field Notes” identity, but make the event page fe
 - [ ] Reserve the dark evergreen treatment for the trip identity area and selected/primary states. Keep the checklist canvas calm and light.
 - [ ] Use one primary action per context. Make secondary actions quiet and put infrequent actions in the overflow menu.
 - [ ] Use icon-only buttons only for universally recognizable compact actions (for example, overflow or delete), with an accessible name and a minimum 44 × 44 px hit area. Prefer concise text where the action is not self-evident.
-- [ ] Avoid icon-plus-label pairs repeated in every section. Remove decorative icons when adjacent text already communicates the meaning.
+- [x] Avoid repeated plus-icon/label combinations in section quick-add rows. The section action now uses a clear text label; the persistent primary Add item action retains its single plus icon.
 - [ ] Reuse the established design tokens in `src/app/globals.css`; do not introduce a parallel set of one-off colors, radii, or shadows.
 - [ ] Preserve the current data model, permissions, Clerk session handling, Supabase Realtime updates, server actions, item metadata, and completed-trip lock behavior.
 
