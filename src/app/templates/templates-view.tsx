@@ -11,6 +11,7 @@ import { createTemplateAction, deleteTemplateAction } from '@/server/actions/che
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
+import { InlineAlert } from '@/components/ui/inline-alert';
 import { EmptyState } from '@/components/ui/state-views';
 import { Plus, Trash2, Layers, BookmarkCheck } from 'lucide-react';
 
@@ -58,54 +59,56 @@ export default function TemplatesView({ initialTemplates }: TemplatesViewProps) 
   };
 
   const handleDelete = async (templateId: string) => {
+    // Optimistic UI update
     setTemplates((prev) => prev.filter((t) => t.id !== templateId));
 
     try {
       const res = await deleteTemplateAction(templateId);
       if (!res.success) {
+        setErrorMsg(res.error || 'Failed to delete template.');
         router.refresh();
       }
     } catch {
+      setErrorMsg('Error deleting template.');
       router.refresh();
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 sm:p-6 rounded-xl border border-canvas-border bg-canvas-card">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--color-ink)]">
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-ink tracking-tight">
             Checklist Templates
           </h1>
-          <p className="text-sm text-[var(--color-ink-muted)] mt-1">
-            Build personal templates or save existing trip checklists for instant reuse.
+          <p className="text-sm text-ink-muted mt-1 max-w-lg">
+            Save and reuse your gear loadouts across multiple trips (e.g. Backcountry Trekking, Weekend Car Camping).
           </p>
         </div>
 
         <Button
-          variant="primary"
-          size="sm"
           onClick={() => {
             setErrorMsg(null);
             setIsCreateOpen(true);
           }}
-          className="gap-1.5 self-start sm:self-auto"
+          className="self-start sm:self-auto gap-1.5"
+          size="sm"
         >
           <Plus className="w-4 h-4" />
-          New Template
+          <span>New Template</span>
         </Button>
       </div>
 
       {errorMsg && (
-        <div className="rounded-xl border border-[var(--color-terracotta-200)] bg-[var(--color-terracotta-50)] p-4 text-sm text-[var(--color-terracotta-700)]">
-          {errorMsg}
-        </div>
+        <InlineAlert type="error" message={errorMsg} />
       )}
 
+      {/* Templates List */}
       {templates.length === 0 ? (
         <EmptyState
-          title="No personal templates yet"
-          description="Create master templates for weekend camping, ultralight backpacking, or beach outings to save setup time."
+          title="No packing templates yet"
+          description="Build reusable templates so you don't have to assemble camping gear lists from scratch every trip."
           actionLabel="Create First Template"
           onAction={() => setIsCreateOpen(true)}
         />
@@ -120,13 +123,13 @@ export default function TemplatesView({ initialTemplates }: TemplatesViewProps) 
             return (
               <div
                 key={tmpl.id}
-                className="rounded-2xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas-card)] p-5 shadow-xs flex flex-col justify-between"
+                className="rounded-xl border border-canvas-border bg-canvas-card p-5 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2">
-                      <BookmarkCheck className="w-5 h-5 text-[var(--color-pine-600)] shrink-0" />
-                      <h2 className="text-base font-bold text-[var(--color-ink)]">
+                      <BookmarkCheck className="w-5 h-5 text-pine-600 shrink-0" />
+                      <h2 className="text-base font-serif font-bold text-ink">
                         {tmpl.name}
                       </h2>
                     </div>
@@ -134,7 +137,7 @@ export default function TemplatesView({ initialTemplates }: TemplatesViewProps) 
                     <button
                       type="button"
                       onClick={() => handleDelete(tmpl.id)}
-                      className="text-zinc-400 hover:text-terracotta-600 p-1 rounded-md"
+                      className="touch-target p-2 rounded-lg text-ink-subtle hover:text-terracotta-600 hover:bg-terracotta-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
                       title="Delete template"
                       aria-label={`Delete ${tmpl.name}`}
                     >
@@ -143,35 +146,35 @@ export default function TemplatesView({ initialTemplates }: TemplatesViewProps) 
                   </div>
 
                   {tmpl.description && (
-                    <p className="text-xs text-[var(--color-ink-muted)] mb-3 line-clamp-2">
+                    <p className="text-xs text-ink-muted mb-3 line-clamp-2">
                       {tmpl.description}
                     </p>
                   )}
 
-                  <div className="flex items-center gap-3 text-xs text-[var(--color-ink-muted)] mb-4">
-                    <span className="flex items-center gap-1">
+                  <div className="flex items-center gap-3 text-xs text-ink-muted mb-4 font-mono">
+                    <span className="flex items-center gap-1.5 font-medium">
                       <Layers className="w-3.5 h-3.5 text-pine-600" />
-                      {tmpl.sections.length} sections
+                      {tmpl.sections.length} categories
                     </span>
-                    <span>•</span>
+                    <span>·</span>
                     <span>{totalItemsCount} items</span>
                   </div>
 
                   {tmpl.sections.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-[var(--color-canvas-border)]/60">
+                    <div className="space-y-2 pt-2.5 border-t border-canvas-border/60">
                       {tmpl.sections.slice(0, 3).map((sec) => (
                         <div key={sec.id} className="text-xs">
-                          <span className="font-semibold text-[var(--color-ink)]">
+                          <span className="font-semibold text-ink">
                             {sec.title}:
                           </span>{' '}
-                          <span className="text-[var(--color-ink-muted)]">
+                          <span className="text-ink-muted">
                             {sec.items?.map((i) => i.title).join(', ') || 'No items'}
                           </span>
                         </div>
                       ))}
                       {tmpl.sections.length > 3 && (
-                        <div className="text-xs text-[var(--color-ink-muted)] italic">
-                          +{tmpl.sections.length - 3} more sections
+                        <div className="text-xs text-ink-muted italic">
+                          +{tmpl.sections.length - 3} more categories
                         </div>
                       )}
                     </div>
@@ -188,9 +191,9 @@ export default function TemplatesView({ initialTemplates }: TemplatesViewProps) 
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         title="Create Checklist Template"
-        description="Build a reusable master checklist template."
+        description="Build a reusable master checklist template for expeditions."
       >
-        <form onSubmit={handleCreate} className="space-y-4 py-2">
+        <form onSubmit={handleCreate} className="space-y-4 py-1">
           <Input
             label="Template Name"
             placeholder="e.g. 3-Day Alpine Backpacking"

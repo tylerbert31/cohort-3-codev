@@ -34,17 +34,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog } from '@/components/ui/dialog';
+import { Tabs } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { ChecklistRow } from '@/components/ui/checklist-row';
-import { LockedEventBanner, EmptyState } from '@/components/ui/state-views';
+import { AvatarStack } from '@/components/ui/avatar-stack';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import {
+  LockedEventBanner,
+  EmptyState,
+} from '@/components/ui/state-views';
 import {
   Plus,
   BookmarkPlus,
   Layers,
   Sparkles,
-  Trash2,
   Calendar,
   MapPin,
-  Users,
+  Share2,
+  CheckCircle2,
+  MoreVertical,
+  ArrowLeft,
+  PackageCheck,
+  Send,
 } from 'lucide-react';
 
 interface EventViewProps {
@@ -66,168 +77,162 @@ export default function EventView({
 }: EventViewProps) {
   const router = useRouter();
   const [event, setEvent] = useState<Event>(initialEvent);
-  const [members] = useState(initialMembers);
-  const [activities] = useState<ActivityEvent[]>(initialActivities);
-  const [sections, setSections] = useState<(ChecklistSection & { items: ChecklistItem[] })[]>(
-    initialSections
-  );
+  const [members, setMembers] = useState(initialMembers);
+  const [activities, setActivities] = useState(initialActivities);
+  const [sections, setSections] = useState(initialSections);
+
+  // Filter state for checklist: 'all' | 'mine' | 'unassigned'
+  const [filterMode, setFilterMode] = useState<'all' | 'mine' | 'unassigned'>('all');
+
+  // Tabs
   const [activeTab, setActiveTab] = useState<'checklist' | 'members' | 'activity'>('checklist');
 
-  // Realtime hook to automatically synchronize changes across participants
-  const { status: realtimeStatus } = useEventRealtime({
-    eventId: event.id,
-    onRefresh: () => router.refresh(),
-  });
-
-  // Action states & Modals
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  // Invite modal
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [inviteCopied, setInviteCopied] = useState(false);
-  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
-
-  // Completion modal
-  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
-  const [isCompleting, setIsCompleting] = useState(false);
-  const [isArchiving, setIsArchiving] = useState(false);
-
-  // Add Section modal
+  // Dialogs
   const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
-  const [sectionTitle, setSectionTitle] = useState('');
-  const [isSubmittingSection, setIsSubmittingSection] = useState(false);
-
-  // Add Item modal
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
-  const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
+  const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Forms
+  const [sectionTitle, setSectionTitle] = useState('');
   const [itemTitle, setItemTitle] = useState('');
   const [itemQuantity, setItemQuantity] = useState('');
-  const [itemAssigneeId, setItemAssigneeId] = useState<string>('');
   const [itemNotes, setItemNotes] = useState('');
-  const [isSubmittingItem, setIsSubmittingItem] = useState(false);
+  const [itemAssigneeId, setItemAssigneeId] = useState('');
+  const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
 
-  // Templates modal
-  const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
+  // Template forms
   const [templateName, setTemplateName] = useState('');
+  const [templateDesc, setTemplateDesc] = useState('');
+  const [userTemplates, setUserTemplates] = useState<ChecklistTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+
+  // Invite state
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
+  // Loading/submitting states
+  const [isSubmittingSection, setIsSubmittingSection] = useState(false);
+  const [isSubmittingItem, setIsSubmittingItem] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-  const [templateSuccess, setTemplateSuccess] = useState<string | null>(null);
-
-  const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
-  const [userTemplates, setUserTemplates] = useState<
-    (ChecklistTemplate & { sections: (TemplateSection & { items: TemplateItem[] })[] })[]
-  >([]);
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const isOwner = userRole === 'owner';
   const isLocked = event.status === 'completed';
   const isArchived = event.status === 'archived';
+  const isOwner = userRole === 'owner';
 
-  // Overall checklist progress calculations
+  // Realtime subscription
+  const { status: realtimeStatus } = useEventRealtime({
+    eventId: event.id,
+    onRefresh: () => {
+      router.refresh();
+    },
+  });
+
+  // Calculate completion
   const totalItems = sections.reduce((acc, sec) => acc + sec.items.length, 0);
   const completedItems = sections.reduce(
-    (acc, sec) => acc + sec.items.filter((it) => it.is_completed).length,
+    (acc, sec) => acc + sec.items.filter((i) => i.is_completed).length,
     0
   );
-  const overallProgressPct =
-    totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+  const overallProgressPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
-  // Handle invite modal open
-  const handleOpenInvite = async () => {
-    setIsInviteOpen(true);
-    if (!inviteCode) {
-      setIsGeneratingInvite(true);
-      try {
-        const res = await generateInviteCodeAction(event.id);
-        if (res.success && res.data) {
-          setInviteCode(res.data.invite.invite_code);
-        } else {
-          setActionError(res.error || 'Failed to generate invite code.');
-        }
-      } catch {
-        setActionError('Failed to generate invite code.');
-      } finally {
-        setIsGeneratingInvite(false);
-      }
-    }
-  };
+  // Handlers
+  const handleToggleItem = async (itemId: string, nextCompleted: boolean) => {
+    if (isLocked) return;
 
-  const handleCopyLink = () => {
-    if (!inviteCode) return;
-    const url = `${window.location.origin}/join/${inviteCode}`;
-    navigator.clipboard.writeText(url);
-    setInviteCopied(true);
-    setTimeout(() => setInviteCopied(false), 2500);
-  };
+    // Optimistic UI update
+    setSections((prev) =>
+      prev.map((sec) => ({
+        ...sec,
+        items: sec.items.map((item) =>
+          item.id === itemId ? { ...item, is_completed: nextCompleted } : item
+        ),
+      }))
+    );
 
-  const handleRevokeInvite = async () => {
-    if (!inviteCode) return;
     try {
-      const res = await revokeInviteCodeAction(inviteCode);
-      if (res.success) {
-        setInviteCode(null);
-        setIsInviteOpen(false);
-      } else {
-        setActionError(res.error || 'Failed to revoke invite.');
-      }
-    } catch {
-      setActionError('Failed to revoke invite code.');
-    }
-  };
-
-  const handleArchiveToggle = async () => {
-    setIsArchiving(true);
-    setActionError(null);
-    try {
-      if (isArchived) {
-        const res = await restoreEventAction(event.id);
-        if (res.success && res.data) {
-          setEvent(res.data);
-          router.refresh();
-        } else {
-          setActionError(res.error || 'Failed to restore event.');
-        }
-      } else {
-        const res = await archiveEventAction(event.id);
-        if (res.success && res.data) {
-          setEvent(res.data);
-          router.refresh();
-        } else {
-          setActionError(res.error || 'Failed to archive event.');
-        }
-      }
-    } catch {
-      setActionError('An error occurred updating the outing state.');
-    } finally {
-      setIsArchiving(false);
-    }
-  };
-
-  const handleConfirmComplete = async () => {
-    setIsCompleting(true);
-    setActionError(null);
-    try {
-      const res = await completeEventAction(event.id);
-      if (res.success && res.data) {
-        setEvent(res.data);
-        setIsCompleteModalOpen(false);
+      const res = await toggleItemCompletionAction({
+        eventId: event.id,
+        itemId,
+        isCompleted: nextCompleted,
+      });
+      if (!res.success) {
+        setActionError(res.error || 'Failed to update item status');
         router.refresh();
-      } else {
-        setActionError(res.error || 'Failed to complete outing.');
       }
     } catch {
-      setActionError('Failed to lock outing.');
-    } finally {
-      setIsCompleting(false);
+      setActionError('Failed to communicate with server');
+      router.refresh();
     }
   };
 
-  // Section & Item Handlers
+  const handleDeleteItem = async (itemId: string, sectionId: string) => {
+    if (isLocked) return;
+
+    // Optimistic removal
+    setSections((prev) =>
+      prev.map((sec) =>
+        sec.id === sectionId
+          ? { ...sec, items: sec.items.filter((i) => i.id !== itemId) }
+          : sec
+      )
+    );
+
+    try {
+      const res = await deleteItemAction({
+        eventId: event.id,
+        itemId,
+      });
+      if (!res.success) {
+        setActionError(res.error || 'Failed to delete item');
+        router.refresh();
+      }
+    } catch {
+      setActionError('Error deleting item');
+      router.refresh();
+    }
+  };
+
+  const handleQuickAdd = async (sectionId: string) => {
+    const title = quickAddTitles[sectionId]?.trim();
+    if (!title || isLocked) return;
+
+    // Clear input immediately
+    setQuickAddTitles((prev) => ({ ...prev, [sectionId]: '' }));
+
+    try {
+      const res = await createItemAction({
+        eventId: event.id,
+        section_id: sectionId,
+        title,
+      });
+
+      if (res.success && res.data) {
+        setSections((prev) =>
+          prev.map((sec) =>
+            sec.id === sectionId ? { ...sec, items: [...sec.items, res.data!] } : sec
+          )
+        );
+      } else {
+        setActionError(res.error || 'Failed to add item');
+      }
+    } catch {
+      setActionError('Failed to add item');
+    }
+  };
+
   const handleAddSection = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sectionTitle.trim()) return;
+    if (!sectionTitle.trim() || isLocked) return;
 
     setIsSubmittingSection(true);
     setActionError(null);
@@ -239,31 +244,22 @@ export default function EventView({
       });
 
       if (res.success && res.data) {
-        setSections((prev) => [...prev, { ...res.data, items: [] }]);
-        setIsAddSectionOpen(false);
+        setSections((prev) => [...prev, { ...res.data!, items: [] }]);
         setSectionTitle('');
+        setIsAddSectionOpen(false);
       } else {
-        setActionError(res.error || 'Failed to create section.');
+        setActionError(res.error || 'Failed to add category');
       }
     } catch {
-      setActionError('An error occurred creating section.');
+      setActionError('Failed to add category');
     } finally {
       setIsSubmittingSection(false);
     }
   };
 
-  const handleOpenAddItem = (sectionId: string) => {
-    setTargetSectionId(sectionId);
-    setItemTitle('');
-    setItemQuantity('');
-    setItemAssigneeId('');
-    setItemNotes('');
-    setIsAddItemOpen(true);
-  };
-
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!itemTitle.trim() || !targetSectionId) return;
+    if (!itemTitle.trim() || !selectedSectionId || isLocked) return;
 
     setIsSubmittingItem(true);
     setActionError(null);
@@ -271,107 +267,128 @@ export default function EventView({
     try {
       const res = await createItemAction({
         eventId: event.id,
-        section_id: targetSectionId,
+        section_id: selectedSectionId,
         title: itemTitle.trim(),
-        quantity: itemQuantity.trim() || null,
-        assignee_id: itemAssigneeId || null,
-        notes: itemNotes.trim() || null,
+        quantity: itemQuantity.trim() || undefined,
+        notes: itemNotes.trim() || undefined,
+        assignee_id: itemAssigneeId || undefined,
       });
 
       if (res.success && res.data) {
-        const newItem = res.data;
-        const assignee = newItem.assignee_id
-          ? members.find((m) => m.clerk_user_id === newItem.assignee_id)?.profile || null
-          : null;
-
         setSections((prev) =>
           prev.map((sec) =>
-            sec.id === targetSectionId
-              ? { ...sec, items: [...sec.items, { ...newItem, assignee }] }
+            sec.id === selectedSectionId
+              ? { ...sec, items: [...sec.items, res.data!] }
               : sec
           )
         );
+        setItemTitle('');
+        setItemQuantity('');
+        setItemNotes('');
+        setItemAssigneeId('');
         setIsAddItemOpen(false);
       } else {
-        setActionError(res.error || 'Failed to add item.');
+        setActionError(res.error || 'Failed to add item');
       }
     } catch {
-      setActionError('An error occurred adding the checklist item.');
+      setActionError('Failed to add item');
     } finally {
       setIsSubmittingItem(false);
     }
   };
 
-  const handleToggleItem = async (itemId: string, nextCompleted: boolean) => {
-    if (isLocked) return;
+  const handleOpenInvite = async () => {
+    setIsInviteOpen(true);
+    setActionError(null);
+    setInviteCopied(false);
 
-    // Optimistic update
-    setSections((prev) =>
-      prev.map((sec) => ({
-        ...sec,
-        items: sec.items.map((it) =>
-          it.id === itemId
-            ? {
-                ...it,
-                is_completed: nextCompleted,
-                completed_at: nextCompleted ? new Date().toISOString() : null,
-                completed_by: nextCompleted ? currentUserId : null,
-              }
-            : it
-        ),
-      }))
-    );
-
-    try {
-      const res = await toggleItemCompletionAction({
-        eventId: event.id,
-        itemId,
-        isCompleted: nextCompleted,
-      });
-
-      if (!res.success) {
-        setActionError(res.error || 'Failed to update item state.');
-        router.refresh(); // Rollback to authoritative server state
+    if (!inviteCode) {
+      setIsGeneratingInvite(true);
+      try {
+        const res = await generateInviteCodeAction(event.id);
+        if (res.success && res.data) {
+          setInviteCode(res.data.invite.invite_code);
+        } else {
+          setActionError(res.error || 'Failed to create invite code');
+        }
+      } catch {
+        setActionError('Failed to generate invite code');
+      } finally {
+        setIsGeneratingInvite(false);
       }
-    } catch {
-      setActionError('Network error updating item.');
-      router.refresh();
     }
   };
 
-  const handleDeleteItem = async (itemId: string, sectionId: string) => {
-    if (isLocked) return;
-
-    // Optimistic remove
-    setSections((prev) =>
-      prev.map((sec) =>
-        sec.id === sectionId
-          ? { ...sec, items: sec.items.filter((it) => it.id !== itemId) }
-          : sec
-      )
-    );
+  const handleRevokeInvite = async () => {
+    if (!inviteCode || !isOwner) return;
 
     try {
-      const res = await deleteItemAction({
-        eventId: event.id,
-        itemId,
-      });
-
-      if (!res.success) {
-        setActionError(res.error || 'Failed to delete item.');
-        router.refresh();
+      const res = await revokeInviteCodeAction(inviteCode);
+      if (res.success) {
+        setInviteCode(null);
+        setIsInviteOpen(false);
+      } else {
+        setActionError(res.error || 'Failed to revoke code');
       }
     } catch {
-      setActionError('Failed to delete item.');
-      router.refresh();
+      setActionError('Failed to revoke code');
     }
   };
 
-  // Template Handlers
+  const handleCopyLink = () => {
+    if (!inviteCode) return;
+    const url = `${window.location.origin}/join/${inviteCode}`;
+    navigator.clipboard.writeText(url);
+    setInviteCopied(true);
+    setTimeout(() => setInviteCopied(false), 2500);
+  };
+
+  const handleArchiveToggle = async () => {
+    if (isLocked) return;
+    setIsArchiving(true);
+    setActionError(null);
+
+    try {
+      if (isArchived) {
+        const res = await restoreEventAction(event.id);
+        if (res.success && res.data) setEvent(res.data);
+      } else {
+        const res = await archiveEventAction(event.id);
+        if (res.success && res.data) setEvent(res.data);
+      }
+    } catch {
+      setActionError('Failed to update archive status');
+    } finally {
+      setIsArchiving(false);
+      setIsMenuOpen(false);
+    }
+  };
+
+  const handleConfirmComplete = async () => {
+    setIsCompleting(true);
+    setActionError(null);
+
+    try {
+      const res = await completeEventAction(event.id);
+      if (res.success && res.data) {
+        setEvent(res.data);
+        setIsCompleteModalOpen(false);
+      } else {
+        setActionError(res.error || 'Failed to wrap up trip');
+      }
+    } catch {
+      setActionError('Failed to complete trip');
+    } finally {
+      setIsCompleting(false);
+      setIsMenuOpen(false);
+    }
+  };
+
   const handleOpenSaveTemplate = () => {
-    setTemplateName(`${event.title} Template`);
-    setTemplateSuccess(null);
+    setTemplateName(`${event.title} Gear Template`);
+    setTemplateDesc(`Checklist saved from ${event.title}`);
     setIsSaveTemplateOpen(true);
+    setIsMenuOpen(false);
   };
 
   const handleSaveTemplate = async (e: React.FormEvent) => {
@@ -385,19 +402,16 @@ export default function EventView({
       const res = await saveTemplateFromEventAction({
         eventId: event.id,
         templateName: templateName.trim(),
+        description: templateDesc.trim() || undefined,
       });
 
       if (res.success) {
-        setTemplateSuccess('Checklist successfully saved as a personal template!');
-        setTimeout(() => {
-          setIsSaveTemplateOpen(false);
-          setTemplateSuccess(null);
-        }, 1500);
+        setIsSaveTemplateOpen(false);
       } else {
-        setActionError(res.error || 'Failed to save template.');
+        setActionError(res.error || 'Failed to save template');
       }
     } catch {
-      setActionError('Failed to save template.');
+      setActionError('Failed to save template');
     } finally {
       setIsSavingTemplate(false);
     }
@@ -405,9 +419,7 @@ export default function EventView({
 
   const handleOpenApplyTemplate = async () => {
     setIsApplyTemplateOpen(true);
-    setIsLoadingTemplates(true);
-    setActionError(null);
-
+    setIsMenuOpen(false);
     try {
       const res = await listUserTemplatesAction();
       if (res.success && res.data) {
@@ -417,9 +429,7 @@ export default function EventView({
         }
       }
     } catch {
-      setActionError('Failed to load personal templates.');
-    } finally {
-      setIsLoadingTemplates(false);
+      setActionError('Failed to load your templates');
     }
   };
 
@@ -434,86 +444,86 @@ export default function EventView({
         eventId: event.id,
         templateId: selectedTemplateId,
       });
-
       if (res.success) {
         setIsApplyTemplateOpen(false);
         router.refresh();
       } else {
-        setActionError(res.error || 'Failed to apply template.');
+        setActionError(res.error || 'Failed to apply template');
       }
     } catch {
-      setActionError('Failed to apply template.');
+      setActionError('Failed to apply template');
     } finally {
       setIsApplyingTemplate(false);
     }
   };
 
+  // Convert member profiles for avatar stack
+  const avatarItems = members.map((m) => ({
+    id: m.id,
+    name: m.profile?.first_name
+      ? `${m.profile.first_name} ${m.profile.last_name || ''}`.trim()
+      : 'Collaborator',
+    imageUrl: m.profile?.image_url,
+  }));
+
   return (
     <div className="space-y-6">
-      {/* Back Link & Realtime Indicator */}
-      <div className="flex items-center justify-between">
+      {/* Back link + Status Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/"
-          className="inline-flex items-center text-sm font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-pine-600)] rounded-md px-1 py-0.5"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 rounded-md py-1"
         >
-          <svg className="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Outings
+          <ArrowLeft className="w-4 h-4" />
+          <span>All Trips</span>
         </Link>
 
         <div className="flex items-center gap-2">
           {realtimeStatus === 'connected' && (
-            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-pine-50 text-pine-700 border border-pine-200 text-xs font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-pine-600 animate-pulse" />
               Live Sync
             </span>
           )}
           {event.status === 'completed' && (
-            <Badge variant="completed">Locked & Completed</Badge>
+            <Badge variant="completed">Wrapped Up</Badge>
           )}
           {event.status === 'archived' && (
             <Badge variant="archived">Archived</Badge>
           )}
           {event.status === 'active' && (
-            <Badge variant="active">Active Outing</Badge>
+            <Badge variant="active">Active Trip</Badge>
           )}
         </div>
       </div>
 
-      {actionError && (
-        <div className="rounded-xl border border-[var(--color-terracotta-200)] bg-[var(--color-terracotta-50)] p-4 text-sm text-[var(--color-terracotta-700)]">
-          {actionError}
-        </div>
-      )}
-
-      {/* Locked Event Banner */}
+      {actionError && <InlineAlert type="error" message={actionError} />}
       {isLocked && <LockedEventBanner />}
 
-      {/* Event Header Card */}
-      <div className="rounded-2xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas-card)] p-6 shadow-sm sm:p-8">
+      {/* Trip Hero Header Card */}
+      <div className="rounded-xl border border-canvas-border bg-canvas-card p-6 sm:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2 flex-1">
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--color-ink)] sm:text-3xl">
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-ink">
               {event.title}
             </h1>
             {event.description && (
-              <p className="text-sm text-[var(--color-ink-muted)] max-w-2xl leading-relaxed">
+              <p className="text-sm text-ink-muted max-w-2xl leading-relaxed">
                 {event.description}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-[var(--color-ink-muted)]">
+            <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-ink-muted">
               {event.location && (
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 text-[var(--color-pine-600)]" />
+                <div className="flex items-center gap-1.5 font-medium">
+                  <MapPin className="h-4 w-4 text-pine-600 shrink-0" />
                   <span>{event.location}</span>
                 </div>
               )}
 
               {(event.start_date || event.end_date) && (
                 <div className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-[var(--color-pine-600)]" />
+                  <Calendar className="h-4 w-4 text-pine-600 shrink-0" />
                   <span>
                     {event.start_date || 'TBD'}
                     {event.end_date ? ` – ${event.end_date}` : ''}
@@ -521,161 +531,202 @@ export default function EventView({
                 </div>
               )}
 
-              <div className="flex items-center gap-1.5">
-                <Users className="h-4 w-4 text-[var(--color-pine-600)]" />
-                <span>{members.length} {members.length === 1 ? 'member' : 'members'}</span>
+              <div className="flex items-center gap-2">
+                <AvatarStack avatars={avatarItems} max={3} size="sm" />
+                <span className="font-medium">
+                  {members.length} {members.length === 1 ? 'member' : 'in cohort'}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
+          {/* Action cluster with overflow menu */}
+          <div className="flex items-center gap-2 pt-2 md:pt-0 shrink-0 relative">
             {!isLocked && (
               <Button
-                variant="outline"
+                variant="primary"
                 size="sm"
                 onClick={handleOpenInvite}
                 className="gap-1.5"
               >
-                <Users className="h-4 w-4 text-[var(--color-pine-600)]" />
-                Invite
+                <Share2 className="h-4 w-4" />
+                <span>Invite</span>
               </Button>
             )}
 
-            {isOwner && !isLocked && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleArchiveToggle}
-                  isLoading={isArchiving}
-                >
-                  {isArchived ? 'Restore' : 'Archive'}
-                </Button>
+            {/* Overflow "⋯" menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                aria-label="Trip actions menu"
+                className="touch-target p-2 rounded-lg border border-canvas-border text-ink hover:bg-canvas-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsCompleteModalOpen(true)}
-                  className="border-[var(--color-locked-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-                >
-                  Complete Outing
-                </Button>
-              </>
-            )}
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-canvas-border bg-white shadow-lg p-1.5 z-30 flex flex-col gap-1 text-xs">
+                  {!isLocked && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleOpenSaveTemplate}
+                        disabled={sections.length === 0}
+                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <BookmarkPlus className="w-3.5 h-3.5 text-pine-600" />
+                        <span>Save as Template</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleOpenApplyTemplate}
+                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center gap-2"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Apply Template</span>
+                      </button>
+                    </>
+                  )}
+
+                  {isOwner && !isLocked && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleArchiveToggle}
+                        disabled={isArchiving}
+                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center gap-2"
+                      >
+                        <span>{isArchived ? 'Restore Trip' : 'Archive Trip'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCompleteModalOpen(true);
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-md hover:bg-pine-50 text-pine-700 font-medium flex items-center gap-2"
+                      >
+                        <PackageCheck className="w-3.5 h-3.5" />
+                        <span>Wrap Up Trip</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Global Progress Bar */}
-        <div className="mt-6 pt-6 border-t border-[var(--color-canvas-border)]">
-          <div className="flex items-center justify-between text-xs font-semibold text-[var(--color-ink)] mb-2">
-            <span>Overall Packing Progress</span>
-            <span>
+        <div className="mt-6 pt-6 border-t border-canvas-border">
+          <div className="flex items-center justify-between text-xs font-semibold text-ink mb-2">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-pine-600" />
+              <span>Cohort Packing Progress</span>
+            </span>
+            <span className="font-mono">
               {completedItems} of {totalItems} items packed ({overallProgressPct}%)
             </span>
           </div>
-          <div className="w-full h-2 rounded-full bg-[var(--color-canvas)] border border-[var(--color-canvas-border)] overflow-hidden">
-            <div
-              className={`h-full transition-all duration-300 ${
-                isLocked ? 'bg-[var(--color-locked-badge)]' : 'bg-[var(--color-pine-600)]'
-              }`}
-              style={{ width: `${overallProgressPct}%` }}
-            />
-          </div>
+          <Progress
+            value={overallProgressPct}
+            variant={isLocked ? 'locked' : 'pine'}
+          />
         </div>
 
         {/* Navigation Tabs */}
-        <div className="mt-8 flex border-b border-[var(--color-canvas-border)]">
-          <button
-            onClick={() => setActiveTab('checklist')}
-            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 -mb-px ${
-              activeTab === 'checklist'
-                ? 'border-[var(--color-pine-600)] text-[var(--color-pine-600)]'
-                : 'border-transparent text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
-            }`}
-          >
-            Checklist ({totalItems})
-          </button>
-          <button
-            onClick={() => setActiveTab('members')}
-            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 -mb-px ${
-              activeTab === 'members'
-                ? 'border-[var(--color-pine-600)] text-[var(--color-pine-600)]'
-                : 'border-transparent text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
-            }`}
-          >
-            Participants ({members.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('activity')}
-            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 -mb-px ${
-              activeTab === 'activity'
-                ? 'border-[var(--color-pine-600)] text-[var(--color-pine-600)]'
-                : 'border-transparent text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
-            }`}
-          >
-            Activity Feed ({activities.length})
-          </button>
+        <div className="mt-6">
+          <Tabs
+            tabs={[
+              { id: 'checklist', label: 'Packing List', count: totalItems },
+              { id: 'members', label: 'Cohort Members', count: members.length },
+              { id: 'activity', label: 'Activity Feed', count: activities.length },
+            ]}
+            activeTab={activeTab}
+            onChange={(id) => setActiveTab(id as 'checklist' | 'members' | 'activity')}
+            ariaLabel="Trip Details Navigation"
+          />
         </div>
       </div>
 
       {/* Tab Panels */}
       {activeTab === 'checklist' && (
         <div className="space-y-6">
-          {/* Section Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-[var(--color-ink)]">Trip Gear & Supplies</h2>
+          {/* Section Toolbar + My Items Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-canvas-card p-3.5 rounded-xl border border-canvas-border">
+            {/* Filter modes */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-ink-muted mr-1 font-medium">Show:</span>
+              <button
+                type="button"
+                onClick={() => setFilterMode('all')}
+                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                  filterMode === 'all'
+                    ? 'bg-pine-600 text-white'
+                    : 'bg-canvas-subtle text-ink hover:bg-canvas-muted'
+                }`}
+              >
+                All Gear
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterMode('mine')}
+                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                  filterMode === 'mine'
+                    ? 'bg-pine-600 text-white'
+                    : 'bg-canvas-subtle text-ink hover:bg-canvas-muted'
+                }`}
+              >
+                My Items
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterMode('unassigned')}
+                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                  filterMode === 'unassigned'
+                    ? 'bg-pine-600 text-white'
+                    : 'bg-canvas-subtle text-ink hover:bg-canvas-muted'
+                }`}
+              >
+                Unassigned
+              </button>
+            </div>
 
             {!isLocked && (
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleOpenSaveTemplate}
-                  disabled={sections.length === 0}
-                  className="gap-1.5"
-                >
-                  <BookmarkPlus className="w-3.5 h-3.5 text-pine-600" />
-                  Save as Template
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleOpenApplyTemplate}
-                  className="gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  Apply Template
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => {
-                    setSectionTitle('');
-                    setIsAddSectionOpen(true);
-                  }}
-                  className="gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  New Section
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSectionTitle('');
+                  setIsAddSectionOpen(true);
+                }}
+                className="gap-1.5 self-start sm:self-auto"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Category
+              </Button>
             )}
           </div>
 
           {/* Sections List */}
           {sections.length === 0 ? (
             <EmptyState
-              title="No checklist sections yet"
-              description="Organize your trip gear by categories such as Camp Kitchen, Sleeping Gear, or Personal Essentials."
-              actionLabel={!isLocked ? 'Create First Section' : undefined}
+              title="No packing categories yet"
+              description="Organize your gear into groups such as Camp Kitchen, Sleep Systems, or Navigation & Safety."
+              actionLabel={!isLocked ? 'Add First Category' : undefined}
               onAction={!isLocked ? () => setIsAddSectionOpen(true) : undefined}
             />
           ) : (
             <div className="space-y-6">
               {sections.map((section) => {
+                // Apply filter
+                const filteredItems = section.items.filter((item) => {
+                  if (filterMode === 'mine') return item.assignee_id === currentUserId;
+                  if (filterMode === 'unassigned') return !item.assignee_id;
+                  return true;
+                });
+
                 const secTotal = section.items.length;
                 const secCompleted = section.items.filter((i) => i.is_completed).length;
                 const secPct = secTotal > 0 ? Math.round((secCompleted / secTotal) * 100) : 0;
@@ -683,74 +734,98 @@ export default function EventView({
                 return (
                   <div
                     key={section.id}
-                    className="rounded-2xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas-card)] p-5 shadow-xs transition-all"
+                    className="rounded-xl border border-canvas-border bg-canvas-card p-5 transition-all"
                   >
                     {/* Section Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-[var(--color-canvas-border)]">
+                    <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
                       <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-[var(--color-pine-600)]" />
-                        <h3 className="text-base font-bold text-[var(--color-ink)]">
+                        <Layers className="w-4 h-4 text-pine-600" />
+                        <h2 className="text-base font-serif font-bold text-ink">
                           {section.title}
-                        </h3>
-                        <span className="text-xs text-[var(--color-ink-muted)]">
-                          ({secCompleted}/{secTotal} packed, {secPct}%)
+                        </h2>
+                        <span className="text-xs text-ink-muted font-mono">
+                          ({secCompleted}/{secTotal})
                         </span>
                       </div>
 
                       {!isLocked && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenAddItem(section.id)}
-                            className="text-xs text-pine-700 hover:bg-pine-50"
-                          >
-                            <Plus className="w-3.5 h-3.5 mr-1" />
-                            Add Item
-                          </Button>
-                        </div>
+                        <Button
+                          variant="quiet"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedSectionId(section.id);
+                            setIsAddItemOpen(true);
+                          }}
+                          className="text-xs text-pine-700"
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" />
+                          Details
+                        </Button>
                       )}
                     </div>
 
                     {/* Items List */}
-                    {section.items.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-[var(--color-ink-muted)] bg-[var(--color-canvas)]/40 rounded-xl border border-dashed border-[var(--color-canvas-border)]">
-                        No items in this section. Click &ldquo;Add Item&rdquo; above.
+                    {filteredItems.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-ink-muted bg-canvas-subtle/30 rounded-xl border border-dashed border-canvas-border">
+                        {filterMode === 'all'
+                          ? 'No gear items yet in this category.'
+                          : `No items matching "${filterMode}" in this category.`}
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {section.items.map((item) => (
-                          <div key={item.id} className="relative group/row">
-                            <ChecklistRow
-                              id={item.id}
-                              title={item.title}
-                              quantity={item.quantity || undefined}
-                              notes={item.notes || undefined}
-                              assigneeName={
-                                item.assignee?.first_name
-                                  ? `${item.assignee.first_name} ${item.assignee.last_name || ''}`.trim()
-                                  : undefined
-                              }
-                              assigneeImageUrl={item.assignee?.image_url || undefined}
-                              isCompleted={item.is_completed}
-                              isEventLocked={isLocked}
-                              onToggle={() => handleToggleItem(item.id, !item.is_completed)}
-                            />
-
-                            {!isLocked && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteItem(item.id, section.id)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 transition-opacity p-1.5 text-zinc-400 hover:text-terracotta-600 rounded-md focus:opacity-100"
-                                title="Delete Item"
-                                aria-label={`Delete ${item.title}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
+                        {filteredItems.map((item) => (
+                          <ChecklistRow
+                            key={item.id}
+                            id={item.id}
+                            title={item.title}
+                            quantity={item.quantity || undefined}
+                            notes={item.notes || undefined}
+                            assigneeName={
+                              item.assignee?.first_name
+                                ? `${item.assignee.first_name} ${item.assignee.last_name || ''}`.trim()
+                                : undefined
+                            }
+                            assigneeImageUrl={item.assignee?.image_url || undefined}
+                            isCompleted={item.is_completed}
+                            isEventLocked={isLocked}
+                            onToggle={() => handleToggleItem(item.id, !item.is_completed)}
+                            onDelete={() => handleDeleteItem(item.id, section.id)}
+                          />
                         ))}
                       </div>
+                    )}
+
+                    {/* Inline Quick Add Input (Typing into a list) */}
+                    {!isLocked && (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleQuickAdd(section.id);
+                        }}
+                        className="mt-3 pt-3 border-t border-canvas-border/50 flex items-center gap-2"
+                      >
+                        <input
+                          type="text"
+                          placeholder="Quick add item (e.g. Camp stove, 2x fuel)..."
+                          value={quickAddTitles[section.id] || ''}
+                          onChange={(e) =>
+                            setQuickAddTitles((prev) => ({
+                              ...prev,
+                              [section.id]: e.target.value,
+                            }))
+                          }
+                          className="flex-1 bg-transparent px-3 py-1.5 text-sm rounded-lg border border-transparent hover:border-canvas-border focus:border-pine-600 focus:bg-white focus:outline-none transition-colors"
+                        />
+                        <Button
+                          type="submit"
+                          size="sm"
+                          variant="ghost"
+                          disabled={!quickAddTitles[section.id]?.trim()}
+                          aria-label="Add item"
+                        >
+                          <Send className="w-3.5 h-3.5 text-pine-600" />
+                        </Button>
+                      </form>
                     )}
                   </div>
                 );
@@ -760,18 +835,23 @@ export default function EventView({
         </div>
       )}
 
+      {/* Cohort Members Tab */}
       {activeTab === 'members' && (
-        <div className="rounded-2xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas-card)] p-6 shadow-sm">
+        <div className="rounded-xl border border-canvas-border bg-canvas-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-[var(--color-ink)]">Trip Participants</h2>
+            <div>
+              <h2 className="text-base font-serif font-bold text-ink">Expedition Cohort</h2>
+              <p className="text-xs text-ink-muted">Friends and travelers sharing this packing list.</p>
+            </div>
             {!isLocked && (
               <Button size="sm" variant="outline" onClick={handleOpenInvite}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Invite Member
               </Button>
             )}
           </div>
 
-          <div className="divide-y divide-[var(--color-canvas-border)]">
+          <div className="divide-y divide-canvas-border">
             {members.map((m) => {
               const name = m.profile?.first_name
                 ? `${m.profile.first_name} ${m.profile.last_name || ''}`.trim()
@@ -781,21 +861,30 @@ export default function EventView({
               return (
                 <div key={m.id} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-pine-100)] text-sm font-bold text-[var(--color-pine-700)]">
-                      {name.charAt(0).toUpperCase()}
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pine-100 text-sm font-bold text-pine-700">
+                      {m.profile?.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={m.profile.image_url}
+                          alt={name}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        name.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-[var(--color-ink)]">
-                        {name} {isSelf && <span className="text-xs text-[var(--color-ink-muted)]">(You)</span>}
+                      <p className="text-sm font-medium text-ink">
+                        {name} {isSelf && <span className="text-xs text-ink-muted">(You)</span>}
                       </p>
-                      <p className="text-xs text-[var(--color-ink-muted)]">
+                      <p className="text-xs text-ink-muted">
                         Joined {new Date(m.joined_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
 
                   <Badge variant={m.role === 'owner' ? 'pending' : 'neutral'}>
-                    {m.role === 'owner' ? 'Owner' : 'Participant'}
+                    {m.role === 'owner' ? 'Organizer' : 'Participant'}
                   </Badge>
                 </div>
               );
@@ -804,33 +893,35 @@ export default function EventView({
         </div>
       )}
 
+      {/* Activity Log Tab */}
       {activeTab === 'activity' && (
-        <div className="rounded-2xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas-card)] p-6 shadow-sm">
-          <h2 className="text-base font-bold text-[var(--color-ink)] mb-4">Activity Log</h2>
+        <div className="rounded-xl border border-canvas-border bg-canvas-card p-6">
+          <h2 className="text-base font-serif font-bold text-ink mb-1">Trip Timeline</h2>
+          <p className="text-xs text-ink-muted mb-5">Audit trail of group updates and packing progress.</p>
           {activities.length === 0 ? (
-            <p className="text-sm text-[var(--color-ink-muted)]">No recorded activity yet.</p>
+            <p className="text-sm text-ink-muted italic">No recorded activity yet.</p>
           ) : (
-            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--color-canvas-border)]">
+            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-canvas-border">
               {activities.map((a) => (
                 <div key={a.id} className="relative flex items-start gap-3">
-                  <div className="absolute -left-6 mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-pine-600)] text-white ring-4 ring-[var(--color-canvas-card)]">
+                  <div className="absolute -left-6 mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-pine-600 text-white ring-4 ring-canvas-card">
                     <div className="h-1.5 w-1.5 rounded-full bg-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-[var(--color-ink)]">
-                      {a.event_type === 'event_created' && 'Outing created'}
-                      {a.event_type === 'member_joined' && 'New participant joined via invite code'}
-                      {a.event_type === 'section_created' && 'Checklist section created'}
-                      {a.event_type === 'item_created' && 'Item added to checklist'}
-                      {a.event_type === 'item_completed' && 'Item marked complete'}
-                      {a.event_type === 'item_uncompleted' && 'Item marked incomplete'}
+                    <p className="text-sm font-medium text-ink">
+                      {a.event_type === 'event_created' && 'Trip created'}
+                      {a.event_type === 'member_joined' && 'New participant joined cohort'}
+                      {a.event_type === 'section_created' && 'Packing category added'}
+                      {a.event_type === 'item_created' && 'Item added to packing list'}
+                      {a.event_type === 'item_completed' && 'Item packed & checked off'}
+                      {a.event_type === 'item_uncompleted' && 'Item marked unpacked'}
                       {a.event_type === 'item_deleted' && 'Item removed'}
                       {a.event_type === 'assignment_changed' && 'Item assignment updated'}
-                      {a.event_type === 'event_archived' && 'Outing archived'}
-                      {a.event_type === 'event_restored' && 'Outing restored to active'}
-                      {a.event_type === 'event_completed' && 'Outing marked permanently completed'}
+                      {a.event_type === 'event_archived' && 'Trip archived'}
+                      {a.event_type === 'event_restored' && 'Trip restored to active'}
+                      {a.event_type === 'event_completed' && 'Trip successfully wrapped up'}
                     </p>
-                    <p className="text-xs text-[var(--color-ink-muted)]">
+                    <p className="text-xs text-ink-muted">
                       {new Date(a.created_at).toLocaleString()}
                     </p>
                   </div>
@@ -845,12 +936,12 @@ export default function EventView({
       <Dialog
         isOpen={isAddSectionOpen}
         onClose={() => setIsAddSectionOpen(false)}
-        title="Add Checklist Section"
-        description="Create a category group for gear (e.g. Sleeping, Cooking, Clothing)."
+        title="Add Packing Category"
+        description="Create a category group for gear (e.g. Camp Kitchen, Sleep Systems, First Aid)."
       >
-        <form onSubmit={handleAddSection} className="space-y-4 py-2">
+        <form onSubmit={handleAddSection} className="space-y-4 py-1">
           <Input
-            label="Section Title"
+            label="Category Name"
             placeholder="e.g. Camp Kitchen"
             value={sectionTitle}
             onChange={(e) => setSectionTitle(e.target.value)}
@@ -871,7 +962,7 @@ export default function EventView({
               variant="primary"
               isLoading={isSubmittingSection}
             >
-              Create Section
+              Create Category
             </Button>
           </div>
         </form>
@@ -881,13 +972,13 @@ export default function EventView({
       <Dialog
         isOpen={isAddItemOpen}
         onClose={() => setIsAddItemOpen(false)}
-        title="Add Checklist Item"
-        description="Add a piece of gear, quantity, and assign a responsible participant."
+        title="Add Gear Details"
+        description="Configure quantity, notes, and assign responsibility."
       >
         <form onSubmit={handleAddItem} className="space-y-3.5 py-1">
           <Input
-            label="Item Name"
-            placeholder="e.g. Backpacking Stove"
+            label="Gear / Item Name"
+            placeholder="e.g. 2-Burner Propane Stove"
             value={itemTitle}
             onChange={(e) => setItemTitle(e.target.value)}
             required
@@ -896,23 +987,31 @@ export default function EventView({
 
           <Input
             label="Quantity / Units (Optional)"
-            placeholder="e.g. 2 units, 10 meters"
+            placeholder="e.g. 2 units, 1 canister"
             value={itemQuantity}
             onChange={(e) => setItemQuantity(e.target.value)}
           />
 
+          <Input
+            label="Notes / Specs (Optional)"
+            placeholder="e.g. Bring extra windscreen, 16oz fuel"
+            value={itemNotes}
+            onChange={(e) => setItemNotes(e.target.value)}
+          />
+
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
-              Assignee (Optional)
+            <label htmlFor="assignee-select" className="text-xs font-medium text-ink">
+              Assign Responsible Member
             </label>
             <select
+              id="assignee-select"
               value={itemAssigneeId}
               onChange={(e) => setItemAssigneeId(e.target.value)}
-              className="w-full rounded-xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas)] px-3 py-2 text-sm text-[var(--color-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--color-pine-600)]"
+              className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
             >
-              <option value="">Unassigned</option>
+              <option value="">Unassigned (Anyone can pack)</option>
               {members.map((m) => (
-                <option key={m.clerk_user_id} value={m.clerk_user_id}>
+                <option key={m.id} value={m.clerk_user_id}>
                   {m.profile?.first_name
                     ? `${m.profile.first_name} ${m.profile.last_name || ''}`.trim()
                     : m.clerk_user_id}
@@ -921,14 +1020,7 @@ export default function EventView({
             </select>
           </div>
 
-          <Input
-            label="Notes / Instructions (Optional)"
-            placeholder="e.g. Compatible with screw-on isobutane canisters"
-            value={itemNotes}
-            onChange={(e) => setItemNotes(e.target.value)}
-          />
-
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3">
             <Button
               type="button"
               variant="ghost"
@@ -942,7 +1034,7 @@ export default function EventView({
               variant="primary"
               isLoading={isSubmittingItem}
             >
-              Add Item
+              Save Item
             </Button>
           </div>
         </form>
@@ -953,22 +1045,23 @@ export default function EventView({
         isOpen={isSaveTemplateOpen}
         onClose={() => setIsSaveTemplateOpen(false)}
         title="Save as Personal Template"
-        description="Creates a reusable checklist template from this outing. Assignees and completion marks are cleared."
+        description="Preserve this trip's checklist structure to reuse for future adventures."
       >
-        <form onSubmit={handleSaveTemplate} className="space-y-4 py-2">
-          {templateSuccess && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-              {templateSuccess}
-            </div>
-          )}
-
+        <form onSubmit={handleSaveTemplate} className="space-y-4 py-1">
           <Input
             label="Template Name"
-            placeholder="e.g. 3-Season Backpacking Checklist"
+            placeholder="e.g. Weekend Camping Essentials"
             value={templateName}
             onChange={(e) => setTemplateName(e.target.value)}
             required
             autoFocus
+          />
+
+          <Input
+            label="Description (Optional)"
+            placeholder="e.g. Standard 3-day car camping packing list"
+            value={templateDesc}
+            onChange={(e) => setTemplateDesc(e.target.value)}
           />
 
           <div className="flex justify-end gap-2 pt-2">
@@ -996,31 +1089,28 @@ export default function EventView({
         isOpen={isApplyTemplateOpen}
         onClose={() => setIsApplyTemplateOpen(false)}
         title="Apply Checklist Template"
-        description="Copies sections and items from your saved templates into this outing. Pre-existing items are safely preserved."
+        description="Add sections and items from one of your saved templates into this trip."
       >
-        <div className="space-y-4 py-2">
-          {isLoadingTemplates ? (
-            <div className="py-6 text-center text-sm text-[var(--color-ink-muted)]">
-              Loading your templates...
-            </div>
-          ) : userTemplates.length === 0 ? (
-            <div className="py-4 text-center text-sm text-[var(--color-ink-muted)]">
-              No saved templates found. You can save your current checklist as a template once assembled.
+        <div className="space-y-4 py-1">
+          {userTemplates.length === 0 ? (
+            <div className="py-4 text-center text-sm text-ink-muted">
+              You haven&apos;t saved any templates yet. Create templates from the Templates tab.
             </div>
           ) : (
             <>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
+                <label htmlFor="template-select" className="text-xs font-medium text-ink">
                   Select Template
                 </label>
                 <select
+                  id="template-select"
                   value={selectedTemplateId}
                   onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas)] px-3 py-2 text-sm text-[var(--color-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--color-pine-600)]"
+                  className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
                 >
                   {userTemplates.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.name} ({t.sections.length} sections)
+                      {t.name}
                     </option>
                   ))}
                 </select>
@@ -1028,6 +1118,7 @@ export default function EventView({
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button
+                  type="button"
                   variant="ghost"
                   onClick={() => setIsApplyTemplateOpen(false)}
                   disabled={isApplyingTemplate}
@@ -1035,11 +1126,12 @@ export default function EventView({
                   Cancel
                 </Button>
                 <Button
+                  type="button"
                   variant="primary"
                   onClick={handleApplyTemplate}
                   isLoading={isApplyingTemplate}
                 >
-                  Apply to Outing
+                  Apply to Trip
                 </Button>
               </div>
             </>
@@ -1052,33 +1144,33 @@ export default function EventView({
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
         title="Invite Trip Collaborators"
-        description="Share this secure 8-character code or join link with your group."
+        description="Share this secure 8-character code or direct join link with your cohort."
       >
         <div className="space-y-5">
           {isGeneratingInvite ? (
-            <div className="py-6 text-center text-sm text-[var(--color-ink-muted)]">
+            <div className="py-6 text-center text-sm text-ink-muted">
               Generating secure invite code...
             </div>
           ) : inviteCode ? (
             <>
-              <div className="rounded-xl border border-[var(--color-pine-200)] bg-[var(--color-pine-50)] p-4 text-center">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-pine-700)]">
-                  Invite Code
+              <div className="rounded-xl border border-pine-200 bg-pine-50 p-4 text-center">
+                <span className="text-xs font-semibold uppercase tracking-wider text-pine-700">
+                  Cohort Invite Code
                 </span>
-                <div className="mt-1 font-mono text-3xl font-bold tracking-widest text-[var(--color-pine-800)]">
+                <div className="mt-1 font-mono text-3xl font-bold tracking-widest text-pine-800">
                   {inviteCode}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-medium text-[var(--color-ink-muted)]">
+                <label className="text-xs font-medium text-ink-muted">
                   Direct Join Link
                 </label>
                 <div className="flex gap-2">
                   <input
                     readOnly
                     value={typeof window !== 'undefined' ? `${window.location.origin}/join/${inviteCode}` : ''}
-                    className="flex-1 rounded-xl border border-[var(--color-canvas-border)] bg-[var(--color-canvas)] px-3 py-2 text-xs font-mono text-[var(--color-ink)] focus:outline-none"
+                    className="flex-1 rounded-lg border border-canvas-border bg-canvas px-3 py-2 text-xs font-mono text-ink focus:outline-none"
                   />
                   <Button
                     size="sm"
@@ -1091,12 +1183,12 @@ export default function EventView({
               </div>
 
               {isOwner && (
-                <div className="pt-2 border-t border-[var(--color-canvas-border)]">
+                <div className="pt-2 border-t border-canvas-border">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleRevokeInvite}
-                    className="w-full text-xs text-[var(--color-terracotta-600)] hover:bg-[var(--color-terracotta-50)]"
+                    className="w-full text-xs text-terracotta-600 hover:bg-terracotta-50"
                   >
                     Revoke This Invite Code
                   </Button>
@@ -1104,7 +1196,7 @@ export default function EventView({
               )}
             </>
           ) : (
-            <div className="text-center py-4 text-sm text-[var(--color-ink-muted)]">
+            <div className="text-center py-4 text-sm text-ink-muted">
               No active invite code. Click below to generate.
               <div className="mt-3">
                 <Button size="sm" onClick={handleOpenInvite}>Generate Code</Button>
@@ -1114,16 +1206,27 @@ export default function EventView({
         </div>
       </Dialog>
 
-      {/* Complete Event Confirmation Dialog */}
+      {/* Wrap Up Confirmation Dialog (Positive Recap) */}
       <Dialog
         isOpen={isCompleteModalOpen}
         onClose={() => setIsCompleteModalOpen(false)}
-        title="Complete & Lock Outing?"
-        description="Treat completion as permanent. Once completed, this outing becomes read-only and no participant can add, edit, or check off items."
+        title="Wrap Up & Lock Trip"
+        description="Ready to head out on the trail? Wrapping up seals your packing list as a permanent expedition record."
       >
         <div className="space-y-4">
-          <div className="rounded-xl border border-[var(--color-locked-border)] bg-[var(--color-locked-surface)] p-3 text-xs text-[var(--color-locked-ink)]">
-            <strong>Permanent Action:</strong> In accordance with trip completion rules, reopening is disallowed for this MVP.
+          <div className="rounded-xl border border-canvas-border bg-canvas-subtle p-4 space-y-2 text-xs text-ink">
+            <h4 className="font-semibold text-sm">Expedition Summary:</h4>
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Total gear packed:</span>
+              <span className="font-mono font-bold">{completedItems} of {totalItems} items ({overallProgressPct}%)</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Cohort size:</span>
+              <span className="font-mono font-bold">{members.length} members</span>
+            </div>
+            <p className="pt-2 text-ink-muted text-xs border-t border-canvas-border/60">
+              Once wrapped up, this checklist becomes a permanent read-only log.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -1132,14 +1235,14 @@ export default function EventView({
               onClick={() => setIsCompleteModalOpen(false)}
               disabled={isCompleting}
             >
-              Cancel
+              Keep Editing
             </Button>
             <Button
-              variant="destructive"
+              variant="primary"
               onClick={handleConfirmComplete}
               isLoading={isCompleting}
             >
-              Confirm & Lock Outing
+              Wrap Up Trip
             </Button>
           </div>
         </div>

@@ -9,12 +9,12 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-canvas">
       <div className="flex flex-col items-center text-center mb-6">
-        <div className="w-12 h-12 rounded-xl bg-pine-600 text-white flex items-center justify-center shadow-sm mb-3">
-          <Compass className="w-7 h-7" />
+        <div className="w-12 h-12 rounded-xl bg-pine-600 text-white flex items-center justify-center mb-3">
+          <Compass className="w-7 h-7 stroke-[1.75]" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink">Outing & Packing Checklist</h1>
+        <h1 className="text-3xl font-serif font-bold tracking-tight text-ink">cohort</h1>
         <p className="text-sm text-ink-muted mt-1 max-w-xs">
-          Sign in with Google to manage your group trips, gear lists, and shared checklists.
+          Sign in with Google to coordinate group gear, assign packing tasks, and manage expedition lists.
         </p>
       </div>
 
@@ -23,7 +23,7 @@ export default function SignInPage() {
           appearance={{
             elements: {
               rootBox: 'w-full max-w-sm',
-              card: 'border border-canvas-border shadow-md rounded-2xl bg-white p-6',
+              card: 'border border-canvas-border rounded-xl bg-white p-6 shadow-sm',
               headerTitle: 'hidden',
               headerSubtitle: 'hidden',
               socialButtonsBlockButton:
