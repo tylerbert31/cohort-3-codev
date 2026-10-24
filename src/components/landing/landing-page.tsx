@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { SignInButton } from '@clerk/nextjs';
 import { resolveDynamicRedirectUrl } from '@/lib/auth-redirect';
 import {
-  Compass, ArrowUpRight, ArrowRight, Check, CheckCircle2, Users, KeyRound,
+  Compass, ArrowUpRight, ArrowRight, Check, CheckCircle2, Users,
   Layers3, MapPin, CalendarDays, TentTree, Flame, ShieldCheck, Sparkles,
   ChevronRight, Mountain, Backpack, Menu, X,
 } from 'lucide-react';
