@@ -1,6 +1,6 @@
 # Mobile Event Page UX Overhaul — Implementation Checklist
 
-**Status:** Planned — implementation not started  
+**Status:** Implementation pass pushed — automated and browser validation still pending  
 **Route in scope:** `/events/[id]` (trip detail / packing checklist)  
 **Primary target:** Mobile web at 320–430 CSS px, then tablet and desktop  
 **Related files:** `src/app/events/[id]/event-view.tsx`, `src/components/ui/tabs.tsx`, `src/components/ui/checklist-row.tsx`, `src/components/layout/app-shell.tsx`, `src/app/globals.css`
@@ -40,30 +40,30 @@ Keep Cohort’s “Trailhead Field Notes” identity, but make the event page fe
 
 ### P0 — Fix usability defects and mobile information architecture
 
-- [ ] Diagnose and fix the clipped event tabs. At 320–430 px, active and inactive labels must remain readable and selectable. Prefer concise mobile labels (e.g. **List**, **People**, **Activity**) with desktop labels retained where useful. Counts must never push a label out of view.
-- [ ] Make tab behavior deterministic: no stale horizontal scroll position after switching tabs, no active tab partially off-screen, and no content wider than the viewport.
-- [ ] Simplify the checklist action model. Decide which action owns each task:
-  - [ ] One clear global entry point for adding an unsectioned item.
-  - [ ] One clear entry point for adding an item to a specific section.
+- [x] Diagnose and fix the clipped event tabs. At 320–430 px, active and inactive labels must remain readable and selectable. Prefer concise mobile labels (e.g. **List**, **People**, **Activity**) with desktop labels retained where useful. Counts must never push a label out of view.
+- [x] Make tab behavior deterministic: no stale horizontal scroll position after switching tabs, no active tab partially off-screen, and no content wider than the viewport.
+- [x] Simplify the checklist action model. Decide which action owns each task:
+  - [x] One clear global entry point for adding an unsectioned item.
+  - [x] One clear entry point for adding an item to a specific section.
   - [ ] One clear entry point for adding a category.
-  - [ ] Remove or redesign redundant entry points; retain quick-add only if its speed benefit and distinction from the detailed item form are clear.
-- [ ] Redesign the section header as a responsive grid, not a single crowded flex row. The title gets the flexible area; progress and actions must keep their own space and never overlap or wrap into broken two-line controls.
-- [ ] Shorten the uncategorized section title to **General items** in the interface. Do not change stored data solely to achieve the shorter label.
+  - [x] Remove or redesign redundant entry points; retain quick-add only if its speed benefit and distinction from the detailed item form are clear.
+- [x] Redesign the section header as a responsive grid, not a single crowded flex row. The title gets the flexible area; progress and actions must keep their own space and never overlap or wrap into broken two-line controls.
+- [x] Shorten the uncategorized section title to **General items** in the interface. Do not change stored data solely to achieve the shorter label.
 - [ ] Verify that the sticky top bar and fixed bottom navigation do not cover buttons, tabs, checklist rows, error alerts, or dialog content. Add appropriate scroll offsets and safe-area padding where needed.
 
 ### P1 — Rebuild checklist visual hierarchy
 
-- [ ] Increase item title prominence and readability. Target 15–16 px or larger for primary item names, with comfortable line height and wrapping for long names.
+- [x] Increase item title prominence and readability. Target 15–16 px or larger for primary item names, with comfortable line height and wrapping for long names.
 - [ ] Establish a consistent type scale for page title, section title, item name, supporting metadata, count, and controls. Avoid using 11–12 px text for frequently read labels or primary actions.
-- [ ] Remove nested “card inside card” styling. Use a section container with simple separated rows/dividers; make checklist rows visually part of the section instead of independent competing panels.
+- [x] Remove nested “card inside card” styling. Use a section container with simple separated rows/dividers; make checklist rows visually part of the section instead of independent competing panels.
 - [ ] Redesign each section header with a predictable layout:
   - [ ] Section title on the first line.
   - [ ] A concise progress label or count adjacent to the title or on a clearly aligned second line.
   - [ ] Secondary actions aligned to a stable trailing edge, using compact accessible controls on mobile.
 - [ ] Make item completion state obvious without reducing the contrast of the whole row too heavily. Checkboxes should be easy to hit; completed titles should remain readable.
-- [ ] Reduce redundant decorative icons. Keep only icons that improve recognition, status comprehension, or action discovery.
+- [x] Reduce redundant decorative icons. Keep only icons that improve recognition, status comprehension, or action discovery.
 - [ ] Normalize section and item spacing. Use consistent vertical rhythm and avoid large empty gaps between controls and the first item.
-- [ ] Refine the filter segmented control: consistent 44 px minimum control height, readable labels, clear selected state, and usable behavior at narrow widths.
+- [x] Refine the filter segmented control: consistent 44 px minimum control height, readable labels, clear selected state, and usable behavior at narrow widths.
 - [ ] Align buttons consistently. Avoid “Add Item” wrapping onto two lines or separating its icon and label. If a compact icon-only action is used, add a meaningful `aria-label` and visible focus state.
 - [ ] Use a consistent presentation for section progress, overall progress, and member counts. Labels should be short, understandable, and visually subordinate to the task content.
 - [ ] Verify long trip names, long section names, long item names, long destinations, missing dates, zero items, and large counts.
@@ -88,7 +88,7 @@ Keep Cohort’s “Trailhead Field Notes” identity, but make the event page fe
 
 ## 5. Acceptance criteria
 
-- [ ] At 320, 360, 375, 390, and 424 px viewport widths, no event tab label, count, title, or action is clipped, overlapped, or unintentionally truncated.
+- [ ] **Requires browser verification:** At 320, 360, 375, 390, and 424 px viewport widths, no event tab label, count, title, or action is clipped, overlapped, or unintentionally truncated.
 - [ ] At 424 × 876, the checklist screen has a clear primary action, one obvious way to add an item to each scope, section titles and progress that scan in one glance, and no redundant row of similar boxed surfaces.
 - [ ] Item titles are comfortably readable without zooming; controls stay usable with one hand and do not require precise taps.
 - [ ] The last item/action can be scrolled clear of the bottom navigation and safe-area inset.
