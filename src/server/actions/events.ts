@@ -3,7 +3,14 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { EventsRepository } from '@/server/db/events-repository';
-import type { Event, EventMember, ActivityEvent, Profile } from '@/types/database';
+import type {
+  Event,
+  EventMember,
+  ActivityEvent,
+  Profile,
+  ChecklistSection,
+  ChecklistItem,
+} from '@/types/database';
 
 export interface CreateEventInput {
   title: string;
@@ -50,13 +57,14 @@ export async function createEventAction(
 }
 
 /**
- * Retrieves event details, member list, and activity feed with server-side authorization check.
+ * Retrieves event details, member list, activity feed, and checklist sections with server-side authorization check.
  */
 export async function getEventDetailsAction(eventId: string): Promise<
   ActionResponse<{
     event: Event;
     members: (EventMember & { profile?: Profile })[];
     activities: ActivityEvent[];
+    sections: (ChecklistSection & { items: ChecklistItem[] })[];
     userRole: 'owner' | 'participant';
   }>
 > {
@@ -80,9 +88,9 @@ export async function getEventDetailsAction(eventId: string): Promise<
  */
 export async function listUserEventsAction(): Promise<
   ActionResponse<{
-    active: Event[];
-    archived: Event[];
-    completed: Event[];
+    active: (Event & { itemCount: number; completedItemCount: number })[];
+    archived: (Event & { itemCount: number; completedItemCount: number })[];
+    completed: (Event & { itemCount: number; completedItemCount: number })[];
   }>
 > {
   try {
