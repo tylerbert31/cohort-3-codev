@@ -1,6 +1,5 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { User } from 'lucide-react';
 
 export interface AvatarItem {
   id: string;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Check, User, Lock, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Check, User, Lock, Trash2 } from 'lucide-react';
 
 export interface ChecklistRowProps {
   id: string;
