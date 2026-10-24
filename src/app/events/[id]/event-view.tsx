@@ -1157,23 +1157,7 @@ export default function EventView({
                   Add Category
                 </Button>
 
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => {
-                    setSelectedSectionId(null);
-                    setItemTitle('');
-                    setItemQuantity('');
-                    setItemNotes('');
-                    setItemAssigneeId('');
-                    setItemDeadline('');
-                    setIsAddItemOpen(true);
-                  }}
-                  className="gap-1.5 text-xs flex-1 sm:flex-initial h-9 font-medium"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Item
-                </Button>
+
               </div>
             )}
           </div>
