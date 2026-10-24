@@ -1184,7 +1184,15 @@ export default function EventView({
                 </div>
               </div>
               {isOwner && (
-
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => setIsCompleteModalOpen(true)}
+                  className="shrink-0 gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <PackageCheck className="w-4 h-4" />
+                  <span>Seal & Wrap Up</span>
+                </Button>
               )}
             </div>
           )}
