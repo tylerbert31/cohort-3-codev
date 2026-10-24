@@ -59,8 +59,8 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
   return (
     <div
       className={cn(
-        'group flex flex-col gap-1.5 p-3 sm:p-3.5 rounded-xl border bg-white transition-all select-none',
-        'border-canvas-border/80 hover:border-ink-subtle hover:shadow-xs',
+        'group flex flex-col gap-2 rounded-2xl border bg-[#fffefa] p-3.5 shadow-[0_2px_10px_rgba(23,43,36,.025)] transition-colors select-none sm:gap-2.5 sm:p-4',
+        'border-canvas-border/80 hover:border-pine-500/70 hover:shadow-[0_5px_16px_rgba(23,43,36,.045)]',
         isCompleted && 'bg-canvas-subtle/40 border-canvas-border/60 opacity-80',
         isEventLocked && 'cursor-default bg-locked-surface/30 hover:border-canvas-border hover:shadow-none'
       )}
@@ -78,11 +78,11 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
             onClick={handleCheckboxClick}
             onKeyDown={handleCheckboxKeyDown}
             className={cn(
-              'w-6 h-6 rounded-md border flex items-center justify-center shrink-0 transition-all cursor-pointer',
+              'h-6 w-6 rounded-full border flex items-center justify-center shrink-0 transition-colors cursor-pointer',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-1',
               isCompleted
                 ? 'bg-pine-600 border-pine-600 text-white shadow-2xs'
-                : 'border-canvas-border bg-white hover:border-pine-500 shadow-2xs',
+                : 'border-canvas-border bg-white hover:border-pine-600 hover:bg-pine-50',
               isEventLocked && 'opacity-60 cursor-not-allowed border-locked-border'
             )}
           >
@@ -103,7 +103,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
           >
             <span
               className={cn(
-                'text-sm sm:text-base font-semibold text-ink leading-snug break-words transition-all line-clamp-2 block',
+                'block break-words text-[14px] font-semibold leading-snug text-ink transition-colors line-clamp-2 sm:text-[15px]',
                 isCompleted && 'line-through text-ink-muted'
               )}
             >
@@ -149,7 +149,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
           onClick={() => onSelect?.(id)}
           onKeyDown={handleSelectKeyDown}
           className={cn(
-            'flex flex-wrap items-center gap-1.5 pl-8.5 text-xs cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600',
+            'flex flex-wrap items-center gap-1.5 pl-8 text-xs cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:pl-9',
             isEventLocked && 'cursor-default'
           )}
         >
