@@ -6,6 +6,7 @@ import { useUser, SignInButton } from '@clerk/nextjs';
 import { joinEventAction } from '@/server/actions/invitations';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/state-views';
+import { resolveDynamicRedirectUrl } from '@/lib/auth-redirect';
 
 interface JoinCardProps {
   inviteCode: string;
@@ -107,7 +108,11 @@ export default function JoinCard({ inviteCode }: JoinCardProps) {
             To view trip details and coordinate with the group, please sign in with Google.
           </p>
 
-          <SignInButton mode="modal">
+          <SignInButton
+            mode="modal"
+            fallbackRedirectUrl={resolveDynamicRedirectUrl(`/join/${cleanCode}`, `/join/${cleanCode}`)}
+            forceRedirectUrl={resolveDynamicRedirectUrl(`/join/${cleanCode}`, `/join/${cleanCode}`)}
+          >
             <Button className="w-full bg-[var(--color-pine-600)] hover:bg-[var(--color-pine-700)] text-white shadow-sm">
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path

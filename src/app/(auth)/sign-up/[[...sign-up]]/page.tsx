@@ -4,6 +4,29 @@ import { Suspense } from 'react';
 import { SignUp } from '@clerk/nextjs';
 import { Compass } from 'lucide-react';
 import { LoadingSkeleton } from '@/components/ui/state-views';
+import { useDynamicRedirectUrl } from '@/lib/auth-redirect';
+
+function SignUpContent() {
+  const dynamicRedirectUrl = useDynamicRedirectUrl('/');
+
+  return (
+    <SignUp
+      fallbackRedirectUrl={dynamicRedirectUrl}
+      forceRedirectUrl={dynamicRedirectUrl}
+      appearance={{
+        elements: {
+          rootBox: 'w-full max-w-sm',
+          card: 'border border-canvas-border shadow-md rounded-2xl bg-white p-6',
+          headerTitle: 'hidden',
+          headerSubtitle: 'hidden',
+          socialButtonsBlockButton:
+            'border border-canvas-border hover:bg-canvas-subtle min-h-[46px] rounded-lg transition-colors font-medium text-ink',
+          footer: 'hidden',
+        },
+      }}
+    />
+  );
+}
 
 export default function SignUpPage() {
   return (
@@ -19,19 +42,7 @@ export default function SignUpPage() {
       </div>
 
       <Suspense fallback={<LoadingSkeleton count={2} />}>
-        <SignUp
-          appearance={{
-            elements: {
-              rootBox: 'w-full max-w-sm',
-              card: 'border border-canvas-border shadow-md rounded-2xl bg-white p-6',
-              headerTitle: 'hidden',
-              headerSubtitle: 'hidden',
-              socialButtonsBlockButton:
-                'border border-canvas-border hover:bg-canvas-subtle min-h-[46px] rounded-lg transition-colors font-medium text-ink',
-              footer: 'hidden',
-            },
-          }}
-        />
+        <SignUpContent />
       </Suspense>
     </div>
   );

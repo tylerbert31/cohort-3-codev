@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { UserButton, SignInButton, useUser } from '@clerk/nextjs';
 import { cn } from '@/lib/utils';
+import { resolveDynamicRedirectUrl } from '@/lib/auth-redirect';
 import {
   Compass,
   Calendar,
@@ -104,7 +105,11 @@ export const AppShell: React.FC<AppShellProps> = ({
                 }}
               />
             ) : (
-              <SignInButton mode="modal">
+              <SignInButton
+                mode="modal"
+                fallbackRedirectUrl={resolveDynamicRedirectUrl(typeof window !== 'undefined' ? window.location.pathname : '/', '/')}
+                forceRedirectUrl={resolveDynamicRedirectUrl(typeof window !== 'undefined' ? window.location.pathname : '/', '/')}
+              >
                 <button
                   type="button"
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-pine-600 text-white text-xs sm:text-sm font-medium hover:bg-pine-700 transition-colors"
