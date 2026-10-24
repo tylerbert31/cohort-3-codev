@@ -18,6 +18,15 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider
+      allowedRedirectOrigins={[
+        'http://localhost:*',
+        'http://127.0.0.1:*',
+        'http://192.168.*:*',
+        'http://10.*:*',
+        'http://172.16.*:*',
+        '*.local:*',
+        '*.local',
+      ]}
       appearance={{
         variables: {
           colorPrimary: '#23523B',
