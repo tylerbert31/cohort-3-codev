@@ -77,8 +77,8 @@ export default function EventView({
 }: EventViewProps) {
   const router = useRouter();
   const [event, setEvent] = useState<Event>(initialEvent);
-  const [members] = useState(initialMembers);
-  const [activities] = useState(initialActivities);
+  const [members, setMembers] = useState(initialMembers);
+  const [activities, setActivities] = useState(initialActivities);
   const [sections, setSections] = useState(initialSections);
   const [unsectionedItems, setUnsectionedItems] = useState<
     (ChecklistItem & { assignee?: Profile | null })[]
@@ -167,6 +167,7 @@ export default function EventView({
         ),
       }))
     );
+
 
     // Optimistic UI update for unsectioned items
     setUnsectionedItems((prev) =>
@@ -345,7 +346,6 @@ export default function EventView({
         } else {
           setUnsectionedItems((prev) => [...prev, itemWithAssignee]);
         }
-
         setItemTitle('');
         setItemQuantity('');
         setItemNotes('');
@@ -424,6 +424,7 @@ export default function EventView({
       setActionError('Failed to update archive status');
     } finally {
       setIsArchiving(false);
+      setIsMenuOpen(false);
     }
   };
 
@@ -438,18 +439,19 @@ export default function EventView({
         setEvent(res.data);
         setIsCompleteModalOpen(false);
       } else {
-        setActionError(res.error || 'Failed to complete trip');
+        setActionError(res.error || 'Failed to wrap up trip');
       }
     } catch {
       setActionError('Failed to complete trip');
     } finally {
       setIsCompleting(false);
+      setIsMenuOpen(false);
     }
   };
 
   const handleOpenSaveTemplate = () => {
-    setTemplateName(`${event.title} Gear List`);
-    setTemplateDesc(event.description || '');
+    setTemplateName(`${event.title} Gear Template`);
+    setTemplateDesc(`Checklist saved from ${event.title}`);
     setIsSaveTemplateOpen(true);
     setIsMenuOpen(false);
   };
@@ -493,7 +495,7 @@ export default function EventView({
         }
       }
     } catch {
-      setActionError('Failed to fetch templates');
+      setActionError('Failed to load your templates');
     }
   };
 
@@ -508,7 +510,6 @@ export default function EventView({
         eventId: event.id,
         templateId: selectedTemplateId,
       });
-
       if (res.success) {
         setIsApplyTemplateOpen(false);
         router.refresh();
@@ -993,7 +994,7 @@ export default function EventView({
                       </div>
                     )}
 
-                    {/* Inline Quick Add Input */}
+                    {/* Inline Quick Add Input (Typing into a list) */}
                     {!isLocked && (
                       <form
                         onSubmit={(e) => {
@@ -1210,7 +1211,6 @@ export default function EventView({
               </select>
             </div>
           )}
-
           <Input
             label="Notes / Specs (Optional)"
             placeholder="e.g. Bring extra windscreen, 16oz fuel"
@@ -1369,12 +1369,12 @@ export default function EventView({
           {isGeneratingInvite ? (
             <div className="py-6 text-center text-sm text-ink-muted">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-pine-600 border-t-transparent mx-auto mb-2" />
-              Generating invite code...
+              Generating secure invite code...
             </div>
           ) : inviteCode ? (
             <>
-              <div className="rounded-xl border border-pine-200 bg-pine-50/70 p-4 text-center">
-                <span className="text-xs font-medium uppercase tracking-wider text-pine-700">
+              <div className="rounded-xl border border-pine-200 bg-pine-50 p-4 text-center">
+                <span className="text-xs font-semibold uppercase tracking-wider text-pine-700">
                   Cohort Invite Code
                 </span>
                 <div className="mt-1 font-mono text-3xl font-bold tracking-widest text-pine-800">
