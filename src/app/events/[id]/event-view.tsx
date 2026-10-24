@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -59,7 +59,36 @@ import {
   PackageCheck,
   Send,
   Trash2,
+  AlertCircle,
+  X,
+  Compass,
 } from 'lucide-react';
+
+function formatDisplayDate(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const date = new Date(year, month, day);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+  }
+  return dateStr;
+}
+
+function formatTripDateRange(startDate?: string | null, endDate?: string | null): string {
+  if (!startDate && !endDate) return 'Dates TBD';
+  if (startDate && !endDate) return formatDisplayDate(startDate);
+  if (!startDate && endDate) return `Until ${formatDisplayDate(endDate)}`;
+  return `${formatDisplayDate(startDate)} – ${formatDisplayDate(endDate)}`;
+}
 
 interface EventViewProps {
   initialEvent: Event;
@@ -107,6 +136,17 @@ export default function EventView({
   const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Progressive disclosure quick-add active container ('unsectioned' or section ID)
+  const [activeQuickAddSection, setActiveQuickAddSection] = useState<string | null>(null);
+
+  // Item deletion confirmation modal
+  const [itemToDelete, setItemToDelete] = useState<{
+    id: string;
+    title: string;
+    sectionId?: string | null;
+  } | null>(null);
 
   // Forms
   const [sectionTitle, setSectionTitle] = useState('');
@@ -162,6 +202,42 @@ export default function EventView({
     setSections(initialSections);
     setUnsectionedItems(initialUnsectionedItems || []);
   }, [initialEvent, initialMembers, initialActivities, initialSections, initialUnsectionedItems]);
+
+  // Outside click & Escape listener for trip actions menu
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMenuOpen]);
+
+  // Auto-dismiss transient action errors after 6s
+  useEffect(() => {
+    if (!actionError) return;
+    const timer = setTimeout(() => {
+      setActionError(null);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [actionError]);
 
   // Full refresh helper that pulls fresh data and updates state
   const refreshEventData = useCallback(async () => {
@@ -824,8 +900,38 @@ export default function EventView({
         </div>
       </div>
 
-      {actionError && <InlineAlert type="error" message={actionError} />}
-      {isLocked && <LockedEventBanner />}
+      {/* Floating Action Error Alert (Always visible & screen-reader announced) */}
+      {actionError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed bottom-6 right-4 sm:right-6 z-50 flex items-center justify-between gap-3 p-3.5 rounded-xl border border-terracotta-200 bg-white shadow-xl text-ink max-w-md w-[calc(100%-2rem)] sm:w-full transition-all"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <AlertCircle className="w-5 h-5 text-terracotta-600 shrink-0" />
+            <span className="text-xs sm:text-sm font-medium text-terracotta-900 leading-snug">
+              {actionError}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            aria-label="Dismiss error notification"
+            className="touch-target p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-canvas-subtle transition-colors shrink-0 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {isLocked && (
+        <LockedEventBanner
+          completedCount={completedItems}
+          totalCount={totalItems}
+          memberCount={members.length}
+          departureDate={event.end_date ? formatDisplayDate(event.end_date) : undefined}
+        />
+      )}
 
       {/* Trip Hero Header Card */}
       <div className="rounded-xl border border-canvas-border bg-canvas-card p-6 sm:p-8">
@@ -849,12 +955,9 @@ export default function EventView({
               )}
 
               {(event.start_date || event.end_date) && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 font-medium">
                   <Calendar className="h-4 w-4 text-pine-600 shrink-0" />
-                  <span>
-                    {event.start_date || 'TBD'}
-                    {event.end_date ? ` – ${event.end_date}` : ''}
-                  </span>
+                  <span>{formatTripDateRange(event.start_date, event.end_date)}</span>
                 </div>
               )}
 
@@ -882,18 +985,24 @@ export default function EventView({
             )}
 
             {/* Overflow "⋯" menu */}
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
               <button
                 type="button"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 aria-label="Trip actions menu"
-                className="touch-target p-2 rounded-lg border border-canvas-border text-ink hover:bg-canvas-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+                aria-haspopup="true"
+                aria-expanded={isMenuOpen}
+                className="touch-target p-2 rounded-lg border border-canvas-border text-ink hover:bg-canvas-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
 
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-canvas-border bg-white shadow-lg p-1.5 z-30 flex flex-col gap-1 text-xs">
+                <div
+                  role="menu"
+                  aria-orientation="vertical"
+                  className="absolute right-0 mt-2 w-48 rounded-xl border border-canvas-border bg-white shadow-lg p-1.5 z-30 flex flex-col gap-1 text-xs"
+                >
                   {!isLocked && (
                     <>
                       <button
@@ -1069,6 +1178,41 @@ export default function EventView({
             )}
           </div>
 
+          {/* Celebratory Milestone: 100% Cohort Readiness */}
+          {overallProgressPct === 100 && totalItems > 0 && !isLocked && (
+            <div className="rounded-xl border border-pine-300 bg-linear-to-r from-pine-50 via-white to-pine-50/80 p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-pine-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <Sparkles className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-serif font-bold text-ink text-sm sm:text-base">
+                      Cohort Ready for Departure! 🏕️
+                    </h3>
+                    <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-pine-600 text-white font-mono">
+                      100% Packed
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    All {totalItems} gear items are packed and accounted for. Ready to head to the trailhead?
+                  </p>
+                </div>
+              </div>
+              {isOwner && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => setIsCompleteModalOpen(true)}
+                  className="shrink-0 gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <PackageCheck className="w-4 h-4" />
+                  <span>Seal & Wrap Up</span>
+                </Button>
+              )}
+            </div>
+          )}
+
           {/* Sections & Direct Items List */}
           {sections.length === 0 && unsectionedItems.length === 0 ? (
             <EmptyState
@@ -1084,6 +1228,15 @@ export default function EventView({
                       setItemNotes('');
                       setItemAssigneeId('');
                       setIsAddItemOpen(true);
+                    }
+                  : undefined
+              }
+              secondaryActionLabel={!isLocked ? 'Add Category' : undefined}
+              onSecondaryAction={
+                !isLocked
+                  ? () => {
+                      setSectionTitle('');
+                      setIsAddSectionOpen(true);
                     }
                   : undefined
               }
@@ -1107,7 +1260,7 @@ export default function EventView({
 
                     {!isLocked && (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           setSelectedSectionId(null);
@@ -1118,9 +1271,10 @@ export default function EventView({
                           setItemDeadline('');
                           setIsAddItemOpen(true);
                         }}
-                        className="h-7 px-2.5 text-xs gap-1 text-pine-700 border-pine-200 hover:bg-pine-50 hover:border-pine-300"
+                        className="h-8 px-2.5 text-xs gap-1 text-ink-muted hover:text-pine-700"
+                        title="Add item with full specs"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5 text-pine-600" />
                         <span>Add Item</span>
                       </Button>
                     )}
@@ -1153,37 +1307,88 @@ export default function EventView({
                           isEventLocked={isLocked}
                           onToggle={() => handleToggleItem(item.id, !item.is_completed)}
                           onSelect={() => handleOpenEditItem(item)}
-                          onDelete={() => handleDeleteItem(item.id, null)}
+                          onDelete={() => setItemToDelete({ id: item.id, title: item.title, sectionId: null })}
                         />
                       ))}
                     </div>
                   )}
 
-                  {/* Inline Quick Add Input */}
+                  {/* Progressive Disclosure Quick Add */}
                   {!isLocked && (
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleQuickAddDirect();
-                      }}
-                      className="mt-3 pt-2.5 border-t border-canvas-border/60 flex items-center gap-2"
-                    >
-                      <input
-                        type="text"
-                        placeholder="Quick add gear item..."
-                        value={quickAddDirectTitle}
-                        onChange={(e) => setQuickAddDirectTitle(e.target.value)}
-                        className="flex-1 bg-canvas-subtle/50 px-3 py-2 text-sm rounded-lg border border-canvas-border/80 focus:border-pine-600 focus:bg-white focus:outline-none transition-all placeholder:text-ink-muted/70 text-ink"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!quickAddDirectTitle.trim()}
-                        aria-label="Add item"
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-pine-600 text-white hover:bg-pine-700 disabled:opacity-40 disabled:hover:bg-pine-600 transition-colors shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                      </button>
-                    </form>
+                    <>
+                      {activeQuickAddSection === 'unsectioned' ? (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            handleQuickAddDirect();
+                          }}
+                          className="mt-3 pt-3 border-t border-canvas-border/70 flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+                        >
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="Add gear item to General Items..."
+                            value={quickAddDirectTitle}
+                            onChange={(e) => setQuickAddDirectTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') {
+                                setActiveQuickAddSection(null);
+                              }
+                            }}
+                            className="flex-1 bg-white px-3 py-2 text-sm rounded-lg border border-canvas-border focus:border-pine-600 focus:outline-none transition-colors text-ink placeholder:text-ink-muted/70"
+                          />
+                          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedSectionId(null);
+                                setItemTitle(quickAddDirectTitle);
+                                setItemQuantity('');
+                                setItemNotes('');
+                                setItemAssigneeId('');
+                                setItemDeadline('');
+                                setIsAddItemOpen(true);
+                              }}
+                              className="text-xs text-ink-muted hover:text-ink h-9 px-2"
+                              title="Open full item specifications"
+                            >
+                              <span>Details...</span>
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setActiveQuickAddSection(null)}
+                              className="text-xs h-9 px-2.5"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="primary"
+                              disabled={!quickAddDirectTitle.trim()}
+                              className="text-xs h-9 px-3 gap-1 cursor-pointer"
+                              aria-label="Save item"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add</span>
+                            </Button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setActiveQuickAddSection('unsectioned')}
+                          className="w-full mt-3 py-2 px-3 rounded-lg border border-dashed border-canvas-border/80 text-xs font-medium text-ink-muted hover:text-pine-700 hover:border-pine-300 hover:bg-pine-50/50 transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-pine-600" />
+                          <span>Add item to General Items...</span>
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -1218,9 +1423,9 @@ export default function EventView({
                       </div>
 
                       {!isLocked && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => {
                               setSelectedSectionId(section.id);
@@ -1231,9 +1436,10 @@ export default function EventView({
                               setItemDeadline('');
                               setIsAddItemOpen(true);
                             }}
-                            className="h-7 px-2.5 text-xs gap-1 text-pine-700 border-pine-200 hover:bg-pine-50 hover:border-pine-300"
+                            className="h-8 px-2 text-xs gap-1 text-ink-muted hover:text-pine-700"
+                            title="Add item with full specs"
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-3.5 h-3.5 text-pine-600" />
                             <span>Add Item</span>
                           </Button>
 
@@ -1242,7 +1448,7 @@ export default function EventView({
                             onClick={() => handleOpenDeleteSection(section)}
                             aria-label={`Remove category ${section.title}`}
                             title="Remove Category"
-                            className="p-1.5 rounded-lg text-ink-muted hover:text-terracotta-600 hover:bg-terracotta-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+                            className="touch-target p-2 rounded-lg text-ink-muted hover:text-terracotta-600 hover:bg-terracotta-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1277,43 +1483,93 @@ export default function EventView({
                             isEventLocked={isLocked}
                             onToggle={() => handleToggleItem(item.id, !item.is_completed)}
                             onSelect={() => handleOpenEditItem(item)}
-                            onDelete={() => handleDeleteItem(item.id, section.id)}
+                            onDelete={() => setItemToDelete({ id: item.id, title: item.title, sectionId: section.id })}
                           />
                         ))}
                       </div>
                     )}
 
-                    {/* Inline Quick Add Input (Typing into a list) */}
+                    {/* Progressive Disclosure Quick Add Input */}
                     {!isLocked && (
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          handleQuickAdd(section.id);
-                        }}
-                        className="mt-3 pt-3 border-t border-canvas-border/50 flex items-center gap-2"
-                      >
-                        <input
-                          type="text"
-                          placeholder="Quick add item (e.g. Camp stove, 2x fuel)..."
-                          value={quickAddTitles[section.id] || ''}
-                          onChange={(e) =>
-                            setQuickAddTitles((prev) => ({
-                              ...prev,
-                              [section.id]: e.target.value,
-                            }))
-                          }
-                          className="flex-1 bg-transparent px-3 py-1.5 text-sm rounded-lg border border-transparent hover:border-canvas-border focus:border-pine-600 focus:bg-white focus:outline-none transition-colors"
-                        />
-                        <Button
-                          type="submit"
-                          size="sm"
-                          variant="ghost"
-                          disabled={!quickAddTitles[section.id]?.trim()}
-                          aria-label="Add item"
-                        >
-                          <Send className="w-3.5 h-3.5 text-pine-600" />
-                        </Button>
-                      </form>
+                      <>
+                        {activeQuickAddSection === section.id ? (
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleQuickAdd(section.id);
+                            }}
+                            className="mt-3 pt-3 border-t border-canvas-border/70 flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+                          >
+                            <input
+                              type="text"
+                              autoFocus
+                              placeholder={`Add gear item to ${section.title}...`}
+                              value={quickAddTitles[section.id] || ''}
+                              onChange={(e) =>
+                                setQuickAddTitles((prev) => ({
+                                  ...prev,
+                                  [section.id]: e.target.value,
+                                }))
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape') {
+                                  setActiveQuickAddSection(null);
+                                }
+                              }}
+                              className="flex-1 bg-white px-3 py-2 text-sm rounded-lg border border-canvas-border focus:border-pine-600 focus:outline-none transition-colors text-ink placeholder:text-ink-muted/70"
+                            />
+                            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSelectedSectionId(section.id);
+                                  setItemTitle(quickAddTitles[section.id] || '');
+                                  setItemQuantity('');
+                                  setItemNotes('');
+                                  setItemAssigneeId('');
+                                  setItemDeadline('');
+                                  setIsAddItemOpen(true);
+                                }}
+                                className="text-xs text-ink-muted hover:text-ink h-9 px-2"
+                                title="Open full item specifications"
+                              >
+                                <span>Details...</span>
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setActiveQuickAddSection(null)}
+                                className="text-xs h-9 px-2.5"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                type="submit"
+                                size="sm"
+                                variant="primary"
+                                disabled={!quickAddTitles[section.id]?.trim()}
+                                className="text-xs h-9 px-3 gap-1 cursor-pointer"
+                                aria-label="Save item"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add</span>
+                              </Button>
+                            </div>
+                          </form>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setActiveQuickAddSection(section.id)}
+                            className="w-full mt-3 py-2 px-3 rounded-lg border border-dashed border-canvas-border/80 text-xs font-medium text-ink-muted hover:text-pine-700 hover:border-pine-300 hover:bg-pine-50/50 transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-pine-600" />
+                            <span>Add item to {section.title}...</span>
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 );
@@ -2042,6 +2298,49 @@ export default function EventView({
             </Button>
           </div>
         </div>
+      </Dialog>
+
+      {/* Delete Item Confirmation Modal */}
+      <Dialog
+        isOpen={Boolean(itemToDelete)}
+        onClose={() => setItemToDelete(null)}
+        title="Remove Gear Item"
+        description={
+          itemToDelete
+            ? `Are you sure you want to remove "${itemToDelete.title}"?`
+            : undefined
+        }
+      >
+        {itemToDelete && (
+          <div className="space-y-4 py-1">
+            <p className="text-xs text-ink-muted leading-relaxed">
+              This will remove this gear item from the checklist for all expedition members. You can re-add it at any time.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-canvas-border">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setItemToDelete(null)}
+              >
+                Keep Item
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                className="bg-terracotta-600 hover:bg-terracotta-700 text-white"
+                onClick={async () => {
+                  const target = itemToDelete;
+                  setItemToDelete(null);
+                  await handleDeleteItem(target.id, target.sectionId);
+                }}
+              >
+                Remove Item
+              </Button>
+            </div>
+          </div>
+        )}
       </Dialog>
     </div>
   );

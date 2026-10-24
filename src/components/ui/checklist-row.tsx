@@ -37,11 +37,20 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
     onToggle?.(id, !isCompleted);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleCheckboxKeyDown = (e: React.KeyboardEvent) => {
     if (isEventLocked) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      e.stopPropagation();
       onToggle?.(id, !isCompleted);
+    }
+  };
+
+  const handleSelectKeyDown = (e: React.KeyboardEvent) => {
+    if (isEventLocked) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect?.(id);
     }
   };
 
@@ -49,19 +58,14 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
 
   return (
     <div
-      role="button"
-      tabIndex={isEventLocked ? -1 : 0}
-      onKeyDown={handleKeyDown}
-      onClick={() => onSelect?.(id)}
       className={cn(
-        'group flex flex-col gap-1.5 p-3 sm:p-3.5 rounded-xl border bg-white transition-all select-none cursor-pointer',
-        'border-canvas-border/80 hover:border-ink-subtle hover:shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600',
-        'active:scale-[0.99] transition-transform duration-100',
+        'group flex flex-col gap-1.5 p-3 sm:p-3.5 rounded-xl border bg-white transition-all select-none',
+        'border-canvas-border/80 hover:border-ink-subtle hover:shadow-xs',
         isCompleted && 'bg-canvas-subtle/40 border-canvas-border/60 opacity-80',
         isEventLocked && 'cursor-default bg-locked-surface/30 hover:border-canvas-border hover:shadow-none'
       )}
     >
-      {/* Top Primary Line: Checkbox + Title + Actions */}
+      {/* Top Primary Line: Checkbox + Title (Clickable) + Actions */}
       <div className="flex items-center justify-between gap-2.5 min-w-0">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           {/* Accessible Checkbox */}
@@ -72,8 +76,9 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
             aria-label={isCompleted ? `Mark ${title} incomplete` : `Mark ${title} complete`}
             disabled={isEventLocked}
             onClick={handleCheckboxClick}
+            onKeyDown={handleCheckboxKeyDown}
             className={cn(
-              'w-6 h-6 rounded-md border flex items-center justify-center shrink-0 transition-all',
+              'w-6 h-6 rounded-md border flex items-center justify-center shrink-0 transition-all cursor-pointer',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-1',
               isCompleted
                 ? 'bg-pine-600 border-pine-600 text-white shadow-2xs'
@@ -84,15 +89,27 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
             {isCompleted && <Check className="w-4 h-4 stroke-[2.5]" />}
           </button>
 
-          {/* Title with full visibility */}
-          <span
+          {/* Title Area (Click to edit gear specs) */}
+          <div
+            role="button"
+            tabIndex={isEventLocked ? -1 : 0}
+            onClick={() => onSelect?.(id)}
+            onKeyDown={handleSelectKeyDown}
+            aria-label={`Edit ${title}`}
             className={cn(
-              'text-sm sm:text-base font-semibold text-ink leading-snug break-words transition-all line-clamp-2',
-              isCompleted && 'line-through text-ink-muted'
+              'flex-1 min-w-0 cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-1 py-0.5',
+              isEventLocked && 'cursor-default'
             )}
           >
-            {title}
-          </span>
+            <span
+              className={cn(
+                'text-sm sm:text-base font-semibold text-ink leading-snug break-words transition-all line-clamp-2 block',
+                isCompleted && 'line-through text-ink-muted'
+              )}
+            >
+              {title}
+            </span>
+          </div>
         </div>
 
         {/* Action icons on right */}
@@ -105,7 +122,8 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
                 onDelete(id);
               }}
               aria-label={`Delete ${title}`}
-              className="p-1.5 rounded-lg text-ink-muted hover:text-terracotta-600 hover:bg-terracotta-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+              title={`Delete ${title}`}
+              className="touch-target p-2 rounded-lg text-ink-muted hover:text-terracotta-600 hover:bg-terracotta-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -125,7 +143,16 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
 
       {/* Bottom Metadata Line: Aligned under the title */}
       {hasMetadata && (
-        <div className="flex flex-wrap items-center gap-1.5 pl-8.5 text-xs">
+        <div
+          role="button"
+          tabIndex={isEventLocked ? -1 : 0}
+          onClick={() => onSelect?.(id)}
+          onKeyDown={handleSelectKeyDown}
+          className={cn(
+            'flex flex-wrap items-center gap-1.5 pl-8.5 text-xs cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600',
+            isEventLocked && 'cursor-default'
+          )}
+        >
           {quantity && (
             <span className="shrink-0 px-2 py-0.5 text-[11px] font-mono font-medium rounded-md bg-canvas-subtle text-ink-muted border border-canvas-border/70">
               {quantity}
