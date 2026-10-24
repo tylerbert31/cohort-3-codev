@@ -1416,9 +1416,8 @@ export default function EventView({
                           <button
                             type="button"
                             onClick={() => setActiveQuickAddSection(section.id)}
-                            className="w-full mt-3 py-2 px-3 rounded-lg border border-dashed border-canvas-border/80 text-xs font-medium text-ink-muted hover:text-pine-700 hover:border-pine-300 hover:bg-pine-50/50 transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
+                            className="mt-3 inline-flex min-h-11 w-full items-center justify-start rounded-lg border-t border-canvas-border/70 px-2 py-2 text-sm font-medium text-pine-800 transition-colors hover:bg-pine-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
                           >
-                            <Plus className="w-3.5 h-3.5 text-pine-600" />
                             <span>Add an item</span>
                           </button>
                         )}
