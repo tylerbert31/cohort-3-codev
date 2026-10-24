@@ -1219,7 +1219,7 @@ export default function EventView({
                   <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-canvas-border pb-3 sm:items-center">
                     <div className="flex min-w-0 items-start gap-2">
                       <PackageCheck aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-pine-700" />
-                      <h2 className="min-w-0 break-words text-base font-semibold leading-snug tracking-[-.035em] text-ink sm:text-lg">
+                      <h2 className="min-w-0 flex-1 break-words text-base font-semibold leading-snug tracking-[-.035em] text-ink sm:text-lg">
                         {sections.length > 0 ? 'General items' : 'Checklist items'}
                       </h2>
                       <span className="shrink-0 rounded-full bg-canvas-subtle px-2 py-1 text-xs font-medium tabular-nums text-ink-muted">
@@ -1419,7 +1419,7 @@ export default function EventView({
                             className="w-full mt-3 py-2 px-3 rounded-lg border border-dashed border-canvas-border/80 text-xs font-medium text-ink-muted hover:text-pine-700 hover:border-pine-300 hover:bg-pine-50/50 transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5 text-pine-600" />
-                            <span>Add item to {section.title}...</span>
+                            <span>Add an item</span>
                           </button>
                         )}
                       </>
