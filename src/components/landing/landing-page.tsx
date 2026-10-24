@@ -5,1023 +5,254 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SignInButton } from '@clerk/nextjs';
 import { resolveDynamicRedirectUrl } from '@/lib/auth-redirect';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
-  Compass,
-  CheckCircle2,
-  Users,
-  ArrowRight,
-  Sparkles,
-  KeyRound,
-  Layers,
-  Lock,
-  ChevronDown,
-  ChevronUp,
-  MapPin,
-  Calendar,
-  Check,
-  AlertCircle,
-  Tent,
-  Flame,
-  HeartPulse,
+  Compass, ArrowUpRight, ArrowRight, Check, CheckCircle2, Users, KeyRound,
+  Layers3, MapPin, CalendarDays, TentTree, Flame, ShieldCheck, Sparkles,
+  ChevronRight, Mountain, Backpack, Menu, X,
 } from 'lucide-react';
 
-interface MockGearItem {
-  id: string;
-  name: string;
-  category: 'camp' | 'cook' | 'safety';
-  assignee: string;
-  assigneeInitial: string;
-  quantity: string;
-  isPacked: boolean;
-  isShared: boolean;
-}
+const demoItems = [
+  { id: 1, name: 'Shared shelter', detail: '4-person tent · 1 needed', owner: 'A', color: 'bg-[#d7e7b5]', packed: true },
+  { id: 2, name: 'Water filter', detail: 'Gravity system · 1 kit', owner: 'M', color: 'bg-[#f4d9a2]', packed: true },
+  { id: 3, name: 'First-aid kit', detail: 'Group safety · 1 pack', owner: 'J', color: 'bg-[#f1c6b3]', packed: false },
+  { id: 4, name: 'Camp stove + fuel', detail: 'Cooking · 1 set', owner: 'R', color: 'bg-[#cbded7]', packed: false },
+];
 
-const INITIAL_MOCK_ITEMS: MockGearItem[] = [
-  {
-    id: 'item-1',
-    name: 'MSR WindBurner Stove & 2x Isobutane Fuel',
-    category: 'cook',
-    assignee: 'Jordan',
-    assigneeInitial: 'J',
-    quantity: '1 kit',
-    isPacked: true,
-    isShared: true,
-  },
-  {
-    id: 'item-2',
-    name: 'BearVault BV500 Food Canisters',
-    category: 'camp',
-    assignee: 'Alex',
-    assigneeInitial: 'A',
-    quantity: '2 units',
-    isPacked: true,
-    isShared: true,
-  },
-  {
-    id: 'item-3',
-    name: 'Wilderness Trauma Kit & Sam Splint',
-    category: 'safety',
-    assignee: 'Sam',
-    assigneeInitial: 'S',
-    quantity: '1 pack',
-    isPacked: true,
-    isShared: true,
-  },
-  {
-    id: 'item-4',
-    name: '4-Person Ultralight Backcountry Shelter',
-    category: 'camp',
-    assignee: 'Alex',
-    assigneeInitial: 'A',
-    quantity: '1 tent',
-    isPacked: false,
-    isShared: true,
-  },
-  {
-    id: 'item-5',
-    name: 'Gravity Water Filter System (Katadyn 6L)',
-    category: 'cook',
-    assignee: 'Taylor',
-    assigneeInitial: 'T',
-    quantity: '1 system',
-    isPacked: false,
-    isShared: true,
-  },
-  {
-    id: 'item-6',
-    name: 'Satellite SOS Communicator (Garmin inReach)',
-    category: 'safety',
-    assignee: 'Jordan',
-    assigneeInitial: 'J',
-    quantity: '1 unit',
-    isPacked: false,
-    isShared: true,
-  },
+const faqs = [
+  { q: 'Is Cohort just another checklist app?', a: 'No. Cohort is built around a trip and the people going on it. Everyone can see shared gear, who is bringing what, and what is still left to pack.' },
+  { q: 'Can friends join without creating a trip?', a: 'Yes. A trip organizer can share an invite code or link. Guests sign in, join the private trip, and work from the same checklist.' },
+  { q: 'What happens after a trip is complete?', a: 'Completed trips become read-only records, so the group can look back at what was packed without accidentally changing the final list.' },
 ];
 
 export function LandingPageView() {
   const router = useRouter();
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [packed, setPacked] = useState<number[]>([1, 2]);
+  const [faqOpen, setFaqOpen] = useState<number | null>(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Interactive Live Demo State
-  const [mockItems, setMockItems] = useState<MockGearItem[]>(INITIAL_MOCK_ITEMS);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'camp' | 'cook' | 'safety'>('all');
-  const [lastInteractedItem, setLastInteractedItem] = useState<string | null>(null);
-
-  // Quick Invite Code Form State
-  const [quickCodeInput, setQuickCodeInput] = useState('');
-  const [quickCodeError, setQuickCodeError] = useState<string | null>(null);
-
-  // FAQ Accordion State
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
-
-  const toggleMockItem = (id: string) => {
-    setMockItems((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const nextPacked = !item.isPacked;
-          setLastInteractedItem(nextPacked ? `Packed: ${item.name}` : `Unpacked: ${item.name}`);
-          return { ...item, isPacked: nextPacked };
-        }
-        return item;
-      })
-    );
-  };
-
-  const filteredItems = mockItems.filter((item) => {
-    if (activeCategoryFilter === 'all') return true;
-    return item.category === activeCategoryFilter;
-  });
-
-  const packedCount = mockItems.filter((i) => i.isPacked).length;
-  const totalCount = mockItems.length;
-  const packedPercent = Math.round((packedCount / totalCount) * 100);
-
-  const handleQuickCodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = quickCodeInput.trim().toUpperCase();
-    if (!clean) {
-      setQuickCodeError('Please enter an invite code.');
+  const submitInvite = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const code = inviteCode.trim().toUpperCase();
+    if (code.length < 6) {
+      setInviteError('Enter the invite code shared by your organizer.');
       return;
     }
-    if (clean.length < 6) {
-      setQuickCodeError('Invite codes are typically 8 characters long.');
-      return;
-    }
-    setQuickCodeError(null);
-    router.push(`/join/${clean}`);
+    setInviteError('');
+    router.push(`/join/${code}`);
   };
-
-  const currentRedirectUrl = typeof window !== 'undefined' ? window.location.origin : '/';
 
   return (
-    <div className="min-h-screen flex flex-col bg-canvas text-ink antialiased selection:bg-pine-100 selection:text-pine-800">
-      {/* Top Navigation Bar */}
-      <header
-        role="banner"
-        className="sticky top-0 z-40 bg-white/95 backdrop-blur-xs border-b border-canvas-border px-4 py-3 sm:px-6 transition-colors"
-      >
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          {/* Logo & Brand */}
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
-            aria-label="cohort home"
-          >
-            <div className="w-8 h-8 rounded-lg bg-pine-600 text-white flex items-center justify-center shadow-xs">
-              <Compass className="w-5 h-5 stroke-[2.2]" />
-            </div>
-            <span className="font-serif font-bold text-2xl tracking-tight text-ink">cohort</span>
-            <span className="hidden sm:inline-flex items-center text-xs text-ink-muted font-medium bg-canvas-subtle px-2 py-0.5 rounded-full border border-canvas-border ml-1">
-              Trailhead Notes
-            </span>
-          </Link>
+    <main className="min-h-screen overflow-hidden bg-canvas text-ink">
+      <header className="relative z-30 mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
+        <Link href="/" className="group flex items-center gap-3" aria-label="Cohort home">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ink text-pine-100 transition-transform group-hover:-rotate-6">
+            <Compass className="h-5 w-5" strokeWidth={1.8} />
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="text-[23px] font-semibold tracking-[-.07em]">cohort<span className="text-pine-600">.</span></span>
+            <span className="mt-1 font-mono text-[9px] uppercase tracking-[.2em] text-ink-subtle">Go together</span>
+          </span>
+        </Link>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-1.5" aria-label="Landing Navigation">
-            <a
-              href="#features"
-              className="px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-canvas-subtle rounded-lg transition-colors"
-            >
-              Features
-            </a>
-            <a
-              href="#demo"
-              className="px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-canvas-subtle rounded-lg transition-colors"
-            >
-              Field Demo
-            </a>
-            <a
-              href="#how-it-works"
-              className="px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-canvas-subtle rounded-lg transition-colors"
-            >
-              How It Works
-            </a>
-            <a
-              href="#faq"
-              className="px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-canvas-subtle rounded-lg transition-colors"
-            >
-              FAQ
-            </a>
-          </nav>
+        <nav className="hidden items-center gap-8 text-[13px] font-semibold text-ink-muted md:flex" aria-label="Main navigation">
+          <a href="#how-it-works" className="transition hover:text-ink">How it works</a>
+          <a href="#field-notes" className="transition hover:text-ink">Field notes</a>
+          <a href="#faq" className="transition hover:text-ink">FAQ</a>
+        </nav>
 
-          {/* Right CTAs */}
-          <div className="flex items-center gap-2.5">
-            <a
-              href="#join-strip"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-ink-muted hover:text-ink px-3 py-2 rounded-lg hover:bg-canvas-subtle transition-colors min-h-[44px]"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-pine-600" />
-              <span>Have a Code?</span>
-            </a>
-
-            <SignInButton
-              mode="modal"
-              fallbackRedirectUrl={resolveDynamicRedirectUrl(currentRedirectUrl, '/')}
-              forceRedirectUrl={resolveDynamicRedirectUrl(currentRedirectUrl, '/')}
-            >
-              <button
-                type="button"
-                className="inline-flex items-center justify-center text-xs sm:text-sm font-medium text-ink hover:text-pine-700 px-3 py-2 rounded-lg hover:bg-canvas-subtle transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
-              >
-                Sign In
-              </button>
-            </SignInButton>
-
-            <SignInButton
-              mode="modal"
-              fallbackRedirectUrl={resolveDynamicRedirectUrl(currentRedirectUrl, '/')}
-              forceRedirectUrl={resolveDynamicRedirectUrl(currentRedirectUrl, '/')}
-            >
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-pine-600 text-white text-xs sm:text-sm font-semibold hover:bg-pine-700 shadow-xs transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
-              >
-                <span>Start a Trip</span>
-                <ArrowRight className="w-4 h-4 hidden sm:inline" />
-              </button>
-            </SignInButton>
-          </div>
+        <div className="hidden items-center gap-3 md:flex">
+          <SignInButton mode="modal" fallbackRedirectUrl={resolveDynamicRedirectUrl('/', '/')} forceRedirectUrl={resolveDynamicRedirectUrl('/', '/')}>
+            <button className="rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink-muted transition hover:bg-white hover:text-ink">Sign in</button>
+          </SignInButton>
+          <SignInButton mode="modal" fallbackRedirectUrl={resolveDynamicRedirectUrl('/', '/')} forceRedirectUrl={resolveDynamicRedirectUrl('/', '/')}>
+            <button className="group inline-flex items-center gap-2 rounded-full bg-pine-600 px-5 py-3 text-[13px] font-semibold text-white shadow-[0_5px_0_#34521c] transition hover:-translate-y-0.5 hover:bg-pine-700 hover:shadow-[0_7px_0_#34521c]">
+              Start planning <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </button>
+          </SignInButton>
         </div>
+
+        <button type="button" className="flex h-11 w-11 items-center justify-center rounded-full border border-canvas-border bg-white md:hidden" aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </header>
 
-      <main className="flex-1">
-        {/* Hero Section */}
-        <section
-          aria-labelledby="hero-title"
-          className="relative pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-6 overflow-hidden border-b border-canvas-border/80 bg-gradient-to-b from-canvas via-canvas to-canvas-subtle/50"
-        >
-          <div className="max-w-5xl mx-auto text-center space-y-6">
-            {/* Eyebrow Pill */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-canvas-card border border-canvas-border shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-pine-500 animate-pulse" />
-              <span className="text-xs font-semibold tracking-wide uppercase text-pine-700">
-                Tactile Group Expedition Logistics
-              </span>
-            </div>
+      {mobileMenuOpen && (
+        <nav className="relative z-20 mx-5 mb-3 grid gap-1 rounded-2xl border border-canvas-border bg-white p-3 shadow-lg md:hidden" aria-label="Mobile navigation">
+          <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-canvas-subtle">How it works</a>
+          <a href="#field-notes" onClick={() => setMobileMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-canvas-subtle">Field notes</a>
+          <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-canvas-subtle">FAQ</a>
+        </nav>
+      )}
 
-            {/* Main Headline */}
-            <h1
-              id="hero-title"
-              className="text-3xl sm:text-5xl lg:text-6xl font-serif font-bold text-ink tracking-tight max-w-4xl mx-auto leading-[1.12]"
-            >
-              No more forgotten stoves.{' '}
-              <span className="text-pine-700 underline decoration-pine-300 decoration-wavy decoration-1 underline-offset-8">
-                Pack group trips
-              </span>{' '}
-              without the chaos.
-            </h1>
-
-            {/* Subtitle */}
-            <p className="text-base sm:text-xl text-ink-muted leading-relaxed max-w-2xl mx-auto font-sans">
-              The collaborative packing coordinator for camping trips, backcountry treks, and friend getaways.
-              Assign shared gear, split the weight, and wrap up every adventure into a permanent field log.
-            </p>
-
-            {/* CTAs */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-md mx-auto">
-              <SignInButton
-                mode="modal"
-                fallbackRedirectUrl={resolveDynamicRedirectUrl(currentRedirectUrl, '/')}
-                forceRedirectUrl={resolveDynamicRedirectUrl(currentRedirectUrl, '/')}
-              >
-                <button
-                  type="button"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-pine-600 text-white font-semibold text-base hover:bg-pine-700 shadow-sm hover:shadow transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
-                >
-                  <span>Plan Your First Trip</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </SignInButton>
-
-              <a
-                href="#demo"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-white border border-canvas-border text-ink font-medium text-base hover:bg-canvas-subtle hover:border-ink-subtle transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
-              >
-                <Sparkles className="w-4 h-4 text-pine-600" />
-                <span>Try Live Demo</span>
-              </a>
-            </div>
-
-            {/* Value Indicators */}
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-xs sm:text-sm text-ink-muted">
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-pine-600" />
-                <span>Zero spreadsheet headaches</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-pine-600" />
-                <span>1-Tap Google Sign-In</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-pine-600" />
-                <span>Works on phones at the trailhead</span>
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* Quick Invite Code Strip */}
-        <section
-          id="join-strip"
-          aria-labelledby="join-strip-heading"
-          className="bg-white border-b border-canvas-border py-8 px-4 sm:px-6"
-        >
-          <div className="max-w-4xl mx-auto bg-canvas-card rounded-2xl border border-canvas-border p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-pine-100 text-pine-700">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <h2 id="join-strip-heading" className="text-lg font-serif font-bold text-ink">
-                  Invited by a friend?
-                </h2>
+      <section className="px-4 pb-16 pt-3 sm:px-8 sm:pb-24 lg:px-10">
+        <div className="cohort-grain relative mx-auto max-w-7xl overflow-hidden rounded-[30px] bg-[#172b24] text-[#f3f3ed] sm:rounded-[38px]">
+          <div className="cohort-grid absolute inset-0 opacity-50" aria-hidden="true" />
+          <div className="absolute -right-24 -top-32 h-[420px] w-[420px] rounded-full border border-white/10 sm:h-[620px] sm:w-[620px]" aria-hidden="true" />
+          <div className="absolute -right-8 -top-16 h-[300px] w-[300px] rounded-full border border-white/10 sm:h-[480px] sm:w-[480px]" aria-hidden="true" />
+          <div className="relative grid min-h-[590px] items-center gap-12 px-6 py-12 sm:px-10 sm:py-16 lg:min-h-[650px] lg:grid-cols-[1.05fr_.95fr] lg:gap-5 lg:px-16 lg:py-20">
+            <div className="cohort-enter relative z-10 max-w-[610px]">
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.07] px-3.5 py-2 font-mono text-[10px] uppercase tracking-[.16em] text-[#d7efaa]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#b5e46a] shadow-[0_0_12px_#b5e46a]" />
+                Built for the whole crew
               </div>
-              <p className="text-xs sm:text-sm text-ink-muted max-w-lg">
-                Enter the 8-character invite code from your trip organizer to review the packing list and claim your gear.
+              <h1 className="max-w-[680px] text-[clamp(3.4rem,7.2vw,6.5rem)] font-semibold leading-[.91] tracking-[-.075em]">
+                The trip is better when <span className="font-normal italic text-[#b5e46a]">everyone</span> is ready.
+              </h1>
+              <p className="mt-7 max-w-[470px] text-[15px] leading-7 text-white/65 sm:text-base">
+                One shared plan for the people, the gear, and all the little things that make getting out there feel easy.
               </p>
-            </div>
-
-            <form onSubmit={handleQuickCodeSubmit} className="flex flex-col sm:flex-row items-stretch gap-2.5 shrink-0">
-              <div className="relative">
-                <input
-                  type="text"
-                  maxLength={12}
-                  placeholder="e.g. 7K2M9XP4"
-                  value={quickCodeInput}
-                  onChange={(e) => {
-                    setQuickCodeInput(e.target.value.toUpperCase());
-                    if (quickCodeError) setQuickCodeError(null);
-                  }}
-                  className="w-full sm:w-44 px-3.5 py-2.5 rounded-xl border border-canvas-border bg-canvas-subtle font-mono text-sm tracking-widest uppercase font-semibold text-ink placeholder:text-ink-subtle focus:bg-white focus:border-pine-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 min-h-[44px]"
-                  aria-label="Expedition invite code"
-                />
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <SignInButton mode="modal" fallbackRedirectUrl={resolveDynamicRedirectUrl('/', '/')} forceRedirectUrl={resolveDynamicRedirectUrl('/', '/')}>
+                  <button className="group inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-[#b5e46a] px-6 text-sm font-bold text-[#172b24] transition hover:bg-[#c9f28a]">
+                    Build your trip <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </button>
+                </SignInButton>
+                <a href="#how-it-works" className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border border-white/20 px-6 text-sm font-semibold text-white transition hover:bg-white/10">
+                  Take a look <ChevronRight className="h-4 w-4" />
+                </a>
               </div>
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-pine-600 text-white text-sm font-semibold hover:bg-pine-700 transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 shadow-xs"
-              >
-                <span>Join Trip</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
-          {quickCodeError && (
-            <p className="max-w-4xl mx-auto mt-2 text-xs text-terracotta-600 font-medium flex items-center gap-1 px-2">
-              <AlertCircle className="w-3.5 h-3.5" />
-              {quickCodeError}
-            </p>
-          )}
-        </section>
-
-        {/* Interactive "Trailhead Field Log" Live Demo */}
-        <section
-          id="demo"
-          aria-labelledby="demo-heading"
-          className="py-16 sm:py-24 px-4 sm:px-6 max-w-5xl mx-auto"
-        >
-          <div className="text-center space-y-3 mb-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pine-100 text-pine-700 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Interactive Field Simulation</span>
-            </div>
-            <h2 id="demo-heading" className="text-2xl sm:text-4xl font-serif font-bold text-ink">
-              Experience the Trailhead Field Log
-            </h2>
-            <p className="text-sm sm:text-base text-ink-muted max-w-xl mx-auto">
-              Tap checkmarks below to simulate packing gear in real-time. Notice how the readiness meter advances and responsibilities remain crystal clear.
-            </p>
-          </div>
-
-          {/* Interactive Mock Card */}
-          <div className="bg-canvas-card rounded-2xl border border-canvas-border shadow-md overflow-hidden">
-            {/* Header / Trip Metadata */}
-            <div className="p-5 sm:p-6 border-b border-canvas-border bg-canvas-subtle/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-xs font-mono font-semibold text-pine-700 bg-pine-100 px-2 py-0.5 rounded">
-                    LIVE FIELD LOG
-                  </span>
-                  <Badge variant="neutral">Yosemite Wilderness</Badge>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-serif font-bold text-ink">
-                  High Sierra 4-Day Ridge Traverse
-                </h3>
-                <div className="flex items-center gap-4 text-xs text-ink-muted mt-1.5">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-pine-600" />
-                    Tuolumne Meadows, CA
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-pine-600" />
-                    Aug 14 – Aug 18
-                  </span>
-                </div>
-              </div>
-
-              {/* Expedition Members Face Pile */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-ink-muted font-medium">Cohort:</span>
-                <div className="flex -space-x-2">
-                  <span
-                    title="Alex (Organizer)"
-                    className="w-8 h-8 rounded-full bg-pine-700 text-white text-xs font-bold flex items-center justify-center border-2 border-white ring-1 ring-canvas-border"
-                  >
-                    A
-                  </span>
-                  <span
-                    title="Sam (Collaborator)"
-                    className="w-8 h-8 rounded-full bg-amber-600 text-white text-xs font-bold flex items-center justify-center border-2 border-white ring-1 ring-canvas-border"
-                  >
-                    S
-                  </span>
-                  <span
-                    title="Jordan (Collaborator)"
-                    className="w-8 h-8 rounded-full bg-slate-700 text-white text-xs font-bold flex items-center justify-center border-2 border-white ring-1 ring-canvas-border"
-                  >
-                    J
-                  </span>
-                  <span
-                    title="Taylor (Collaborator)"
-                    className="w-8 h-8 rounded-full bg-emerald-700 text-white text-xs font-bold flex items-center justify-center border-2 border-white ring-1 ring-canvas-border"
-                  >
-                    T
-                  </span>
-                </div>
+              <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/15 pt-6 text-xs text-white/55">
+                <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#b5e46a]" /> Private by default</span>
+                <span className="inline-flex items-center gap-2"><Users className="h-4 w-4 text-[#b5e46a]" /> Made for groups</span>
+                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#b5e46a]" /> No gear left behind</span>
               </div>
             </div>
 
-            {/* Readiness Meter */}
-            <div className="p-5 sm:p-6 border-b border-canvas-border bg-white">
-              <div className="flex items-center justify-between text-xs sm:text-sm font-medium mb-2">
-                <span className="flex items-center gap-1.5 text-ink">
-                  <CheckCircle2 className="w-4 h-4 text-pine-600" />
-                  <span>
-                    <strong>{packedCount}</strong> of <strong>{totalCount}</strong> shared expedition essentials ready
-                  </span>
-                </span>
-                <span className="font-mono font-bold text-pine-700">{packedPercent}%</span>
+            <div className="cohort-enter-delay relative mx-auto w-full max-w-[490px] lg:ml-auto lg:mr-0">
+              <div className="absolute -right-2 top-5 z-20 hidden -rotate-6 rounded-xl bg-[#f4d9a2] px-4 py-3 text-[#3b3528] shadow-xl sm:block">
+                <span className="block font-mono text-[9px] uppercase tracking-[.17em] opacity-60">Crew status</span>
+                <span className="mt-1 block text-sm font-semibold">Almost trail-ready</span>
               </div>
-              <Progress value={packedPercent} variant="pine" />
-
-              {lastInteractedItem && (
-                <div className="mt-3 text-xs text-pine-700 bg-pine-50 border border-pine-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5 animate-fadeIn">
-                  <Check className="w-3.5 h-3.5 shrink-0" />
-                  <span>{lastInteractedItem} · Real-time status synced to all members.</span>
-                </div>
-              )}
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="px-5 sm:px-6 pt-4 pb-2 flex items-center gap-1.5 overflow-x-auto border-b border-canvas-border/60 bg-canvas-subtle/20">
-              <button
-                type="button"
-                onClick={() => setActiveCategoryFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] ${
-                  activeCategoryFilter === 'all'
-                    ? 'bg-pine-600 text-white font-semibold'
-                    : 'text-ink-muted hover:text-ink hover:bg-canvas-subtle'
-                }`}
-              >
-                All Gear ({mockItems.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCategoryFilter('camp')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] flex items-center gap-1.5 ${
-                  activeCategoryFilter === 'camp'
-                    ? 'bg-pine-600 text-white font-semibold'
-                    : 'text-ink-muted hover:text-ink hover:bg-canvas-subtle'
-                }`}
-              >
-                <Tent className="w-3 h-3" />
-                <span>Shelter & Camp</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCategoryFilter('cook')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] flex items-center gap-1.5 ${
-                  activeCategoryFilter === 'cook'
-                    ? 'bg-pine-600 text-white font-semibold'
-                    : 'text-ink-muted hover:text-ink hover:bg-canvas-subtle'
-                }`}
-              >
-                <Flame className="w-3 h-3" />
-                <span>Cook & Water</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveCategoryFilter('safety')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors min-h-[36px] flex items-center gap-1.5 ${
-                  activeCategoryFilter === 'safety'
-                    ? 'bg-pine-600 text-white font-semibold'
-                    : 'text-ink-muted hover:text-ink hover:bg-canvas-subtle'
-                }`}
-              >
-                <HeartPulse className="w-3 h-3" />
-                <span>Trauma & Safety</span>
-              </button>
-            </div>
-
-            {/* Interactive Checklist Rows */}
-            <div className="p-3 sm:p-4 space-y-2 divide-y divide-canvas-border/40">
-              {filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => toggleMockItem(item.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.preventDefault();
-                      toggleMockItem(item.id);
-                    }
-                  }}
-                  role="checkbox"
-                  aria-checked={item.isPacked}
-                  tabIndex={0}
-                  className={`pt-2.5 first:pt-0 group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${
-                    item.isPacked
-                      ? 'bg-canvas-subtle/40 border-canvas-border/60'
-                      : 'bg-white hover:bg-pine-50/30 border-canvas-border hover:border-pine-300'
-                  } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 min-h-[52px]`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {/* Checkbox Target */}
-                    <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
-                        item.isPacked
-                          ? 'bg-pine-600 border-pine-600 text-white'
-                          : 'border-canvas-border group-hover:border-pine-600 bg-white'
-                      }`}
-                    >
-                      {item.isPacked && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p
-                        className={`text-sm font-medium truncate transition-colors ${
-                          item.isPacked ? 'line-through text-ink-muted' : 'text-ink font-semibold'
-                        }`}
-                      >
-                        {item.name}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-ink-muted mt-0.5">
-                        <span className="font-mono">{item.quantity}</span>
-                        <span>·</span>
-                        <span className="capitalize">{item.category}</span>
-                      </div>
-                    </div>
+              <div className="relative rounded-[26px] border border-white/15 bg-[#f7f7f0] p-4 text-ink shadow-[0_32px_80px_rgba(0,0,0,.28)] sm:p-5">
+                <div className="flex items-start justify-between border-b border-[#d8ded1] px-1 pb-4">
+                  <div>
+                    <div className="font-mono text-[9px] uppercase tracking-[.2em] text-pine-700">Shared checklist / 01</div>
+                    <h2 className="mt-2 text-[25px] font-semibold tracking-[-.06em]">High Sierra weekend</h2>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted"><MapPin className="h-3.5 w-3.5" /> Tuolumne Meadows, CA</p>
                   </div>
-
-                  {/* Assignee Chip */}
-                  <div className="flex items-center gap-2 shrink-0 ml-3">
-                    <span className="hidden sm:inline-flex text-xs text-ink-muted font-medium">
-                      Assigned to
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-canvas-subtle border border-canvas-border text-xs font-semibold text-ink">
-                      <span className="w-4 h-4 rounded-full bg-pine-600 text-white text-[10px] font-bold flex items-center justify-center">
-                        {item.assigneeInitial}
-                      </span>
-                      <span>{item.assignee}</span>
-                    </span>
-                  </div>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#e2edcf] text-pine-700"><TentTree className="h-5 w-5" /></span>
                 </div>
-              ))}
-            </div>
-
-            {/* Footer Simulation Hint */}
-            <div className="px-5 py-3.5 bg-canvas-subtle/50 border-t border-canvas-border text-center text-xs text-ink-muted flex items-center justify-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-pine-600" />
-              <span>Tap any row above to test the live packing experience.</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Feature Bento Grid */}
-        <section
-          id="features"
-          aria-labelledby="features-heading"
-          className="py-16 sm:py-24 px-4 sm:px-6 bg-canvas-subtle/40 border-y border-canvas-border/80"
-        >
-          <div className="max-w-6xl mx-auto space-y-12">
-            <div className="text-center space-y-3">
-              <span className="text-xs font-semibold tracking-wider uppercase text-pine-700 bg-pine-100 px-3 py-1 rounded-full">
-                Tactile Field Features
-              </span>
-              <h2 id="features-heading" className="text-2xl sm:text-4xl font-serif font-bold text-ink">
-                Built for the trailhead, not the boardroom
-              </h2>
-              <p className="text-sm sm:text-base text-ink-muted max-w-xl mx-auto">
-                No sprint boards or complex Gantt charts. Just the essential coordination tools required to get your group into the wilderness fully equipped.
-              </p>
-            </div>
-
-            {/* Bento Grid (4 Cards) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Feature 1 */}
-              <div className="bg-canvas-card rounded-2xl border border-canvas-border p-6 sm:p-8 flex flex-col justify-between hover:shadow-sm transition-all group">
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-pine-50 border border-pine-200 text-pine-700 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
-                    <Users className="w-6 h-6 stroke-[1.8]" />
-                  </div>
-                  <h3 className="text-xl font-serif font-bold text-ink mb-2">
-                    Collaborative Gear Assignment
-                  </h3>
-                  <p className="text-sm text-ink-muted leading-relaxed">
-                    Prevent the classic mistake of 3 people hauling heavy camp stoves while no one remembers the matches. Designate shared essentials, assign owners, and track who carries what.
-                  </p>
+                <div className="flex items-end justify-between px-1 pb-2 pt-4">
+                  <div><span className="font-mono text-[10px] uppercase tracking-[.14em] text-ink-subtle">Packing progress</span><p className="mt-1 text-2xl font-semibold tracking-[-.06em]">{packed.length}<span className="text-ink-subtle">/4</span> <span className="text-sm font-medium tracking-normal text-ink-muted">ready</span></p></div>
+                  <span className="font-mono text-xs text-pine-700">{Math.round((packed.length / 4) * 100)}%</span>
                 </div>
-                <div className="mt-6 pt-4 border-t border-canvas-border/60 flex items-center justify-between text-xs text-ink-muted">
-                  <span className="font-medium text-pine-700">Group vs. Personal tracking</span>
-                  <span className="font-mono">Split the haul</span>
+                <div className="mx-1 mb-3 h-2 overflow-hidden rounded-full bg-[#e0e5d9]"><div className="h-full rounded-full bg-pine-600 transition-all duration-500" style={{ width: `${(packed.length / 4) * 100}%` }} /></div>
+                <div className="space-y-1">
+                  {demoItems.map((item) => {
+                    const checked = packed.includes(item.id);
+                    return (
+                      <button key={item.id} type="button" onClick={() => setPacked((prev) => checked ? prev.filter((id) => id !== item.id) : [...prev, item.id])} className="group flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:bg-[#ecefe6]">
+                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition ${checked ? 'border-pine-600 bg-pine-600 text-white' : 'border-[#b9c3b3] bg-white text-transparent'}`}><Check className="h-3.5 w-3.5" /></span>
+                        <span className="min-w-0 flex-1"><span className={`block truncate text-[13px] font-semibold ${checked ? 'text-ink' : 'text-ink-muted'}`}>{item.name}</span><span className="mt-1 block truncate text-[10px] text-ink-subtle">{item.detail}</span></span>
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${item.color}`}>{item.owner}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex items-center justify-between rounded-2xl bg-[#e9eee2] px-4 py-3">
+                  <div className="flex -space-x-2"><span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#e9eee2] bg-[#e8c6aa] text-[9px] font-bold">A</span><span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#e9eee2] bg-[#c4d9d1] text-[9px] font-bold">M</span><span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#e9eee2] bg-[#e6d39d] text-[9px] font-bold">J</span><span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#e9eee2] bg-white text-[9px] font-bold">+2</span></div>
+                  <span className="font-mono text-[9px] uppercase tracking-[.13em] text-ink-muted">5 people · one plan</span>
                 </div>
               </div>
-
-              {/* Feature 2 */}
-              <div className="bg-canvas-card rounded-2xl border border-canvas-border p-6 sm:p-8 flex flex-col justify-between hover:shadow-sm transition-all group">
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
-                    <KeyRound className="w-6 h-6 stroke-[1.8]" />
-                  </div>
-                  <h3 className="text-xl font-serif font-bold text-ink mb-2">
-                    Frictionless 8-Character Invites
-                  </h3>
-                  <p className="text-sm text-ink-muted leading-relaxed">
-                    Drop a clean invite code or link into your group chat. Your friends can view the expedition and see what gear is needed before signing in with a single Google tap.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-canvas-border/60 flex items-center justify-between text-xs text-ink-muted">
-                  <span className="font-medium text-amber-700">No account required to preview</span>
-                  <span className="font-mono">8-char codes</span>
-                </div>
-              </div>
-
-              {/* Feature 3 */}
-              <div className="bg-canvas-card rounded-2xl border border-canvas-border p-6 sm:p-8 flex flex-col justify-between hover:shadow-sm transition-all group">
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-pine-50 border border-pine-200 text-pine-700 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
-                    <Layers className="w-6 h-6 stroke-[1.8]" />
-                  </div>
-                  <h3 className="text-xl font-serif font-bold text-ink mb-2">
-                    Curated Expedition Templates
-                  </h3>
-                  <p className="text-sm text-ink-muted leading-relaxed">
-                    Never start from a blank slate. Launch your adventure from field-tested packing checklists for Weekend Backpacking, Alpine Climbing, Desert Overnights, and Car Camping.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-canvas-border/60 flex items-center justify-between text-xs text-ink-muted">
-                  <span className="font-medium text-pine-700">Pre-built categories & gear</span>
-                  <span className="font-mono">1-click import</span>
-                </div>
-              </div>
-
-              {/* Feature 4 */}
-              <div className="bg-canvas-card rounded-2xl border border-canvas-border p-6 sm:p-8 flex flex-col justify-between hover:shadow-sm transition-all group">
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
-                    <Lock className="w-6 h-6 stroke-[1.8]" />
-                  </div>
-                  <h3 className="text-xl font-serif font-bold text-ink mb-2">
-                    Permanent Trailhead Logbook
-                  </h3>
-                  <p className="text-sm text-ink-muted leading-relaxed">
-                    When the vehicles depart the trailhead, wrap up the expedition. It locks permanently into your field log archive, preserving memories and serving as a blueprint for next year.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-canvas-border/60 flex items-center justify-between text-xs text-ink-muted">
-                  <span className="font-medium text-slate-700">Immutable historical records</span>
-                  <span className="font-mono">Field log archive</span>
-                </div>
-              </div>
+              <div className="absolute -bottom-5 -left-2 hidden -rotate-3 items-center gap-2 rounded-xl border border-[#d5e2c4] bg-[#e9f2dd] px-4 py-3 text-xs font-semibold text-pine-800 shadow-lg sm:flex"><Sparkles className="h-4 w-4" /> Less scrambling. More outside.</div>
             </div>
-          </div>
-        </section>
-
-        {/* How It Works Section */}
-        <section
-          id="how-it-works"
-          aria-labelledby="how-it-works-heading"
-          className="py-16 sm:py-24 px-4 sm:px-6 max-w-5xl mx-auto"
-        >
-          <div className="text-center space-y-3 mb-14">
-            <span className="text-xs font-semibold tracking-wider uppercase text-pine-700 bg-pine-100 px-3 py-1 rounded-full">
-              3 Simple Steps
-            </span>
-            <h2 id="how-it-works-heading" className="text-2xl sm:text-4xl font-serif font-bold text-ink">
-              From trailhead planning to campout departure
-            </h2>
-            <p className="text-sm sm:text-base text-ink-muted max-w-xl mx-auto">
-              How outdoor groups use cohort to get out into nature prepared and stress-free.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* Step 1 */}
-            <div className="bg-canvas-card rounded-2xl border border-canvas-border p-6 relative flex flex-col">
-              <span className="font-serif font-bold text-4xl text-pine-200 mb-4">01</span>
-              <h3 className="text-lg font-serif font-bold text-ink mb-2">
-                Assemble the Expedition
-              </h3>
-              <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
-                Give your trip a name, dates, and destination. Kickstart your checklist with a proven template or draft your custom gear categories.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="bg-canvas-card rounded-2xl border border-canvas-border p-6 relative flex flex-col">
-              <span className="font-serif font-bold text-4xl text-pine-200 mb-4">02</span>
-              <h3 className="text-lg font-serif font-bold text-ink mb-2">
-                Invite Cohort & Split Load
-              </h3>
-              <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
-                Send your 8-character invite code in group messages. Teammates claim gear items, pledge quantities, and check off their backpacks.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="bg-canvas-card rounded-2xl border border-canvas-border p-6 relative flex flex-col">
-              <span className="font-serif font-bold text-4xl text-pine-200 mb-4">03</span>
-              <h3 className="text-lg font-serif font-bold text-ink mb-2">
-                Tailgate Check & Wrap Up
-              </h3>
-              <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
-                Do a quick final sweep at the trailhead tailgate. Lock the list into a completed trip log to preserve a permanent record of the adventure.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Why cohort vs Spreadsheets / Chat apps */}
-        <section
-          aria-labelledby="comparison-heading"
-          className="py-16 sm:py-20 px-4 sm:px-6 bg-canvas-subtle/50 border-y border-canvas-border/80"
-        >
-          <div className="max-w-4xl mx-auto space-y-8">
-            <div className="text-center space-y-2">
-              <h2 id="comparison-heading" className="text-2xl sm:text-3xl font-serif font-bold text-ink">
-                Why outdoor lovers ditch group spreadsheets
-              </h2>
-              <p className="text-xs sm:text-sm text-ink-muted">
-                Spreadsheets were built for quarterly earnings, not packing backpacks at a trailhead tailgate.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Spreadsheets Column */}
-              <div className="bg-canvas-card rounded-2xl border border-canvas-border p-6 space-y-4 opacity-90">
-                <div className="flex items-center gap-2 pb-3 border-b border-canvas-border">
-                  <span className="w-2.5 h-2.5 rounded-full bg-terracotta-500" />
-                  <h3 className="font-semibold text-ink text-sm sm:text-base">
-                    Messy Spreadsheets & Chat Threads
-                  </h3>
-                </div>
-                <ul className="space-y-3 text-xs sm:text-sm text-ink-muted">
-                  <li className="flex items-start gap-2">
-                    <span className="text-terracotta-500 font-bold">✕</span>
-                    <span>Pinch-zooming tiny cells on mobile with dirty camp hands.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-terracotta-500 font-bold">✕</span>
-                    <span>Accidentally overwriting a friend&apos;s gear row or deleting formulas.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-terracotta-500 font-bold">✕</span>
-                    <span>Lost spreadsheet links buried 200 messages deep in chat history.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-terracotta-500 font-bold">✕</span>
-                    <span>No clear distinction between group essentials and personal items.</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* cohort Column */}
-              <div className="bg-canvas-card rounded-2xl border-2 border-pine-600/70 p-6 space-y-4 shadow-sm relative">
-                <div className="flex items-center gap-2 pb-3 border-b border-canvas-border">
-                  <span className="w-2.5 h-2.5 rounded-full bg-pine-600" />
-                  <h3 className="font-semibold text-pine-800 text-sm sm:text-base flex items-center justify-between flex-1">
-                    <span>cohort Trailhead Notes</span>
-                    <Badge variant="pending">Built for Adventure</Badge>
-                  </h3>
-                </div>
-                <ul className="space-y-3 text-xs sm:text-sm text-ink">
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-pine-600 shrink-0 mt-0.5" />
-                    <span>Large 44px touch targets made for single-thumb checking on phones.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-pine-600 shrink-0 mt-0.5" />
-                    <span>Instant real-time sync with clear assignee face chips.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-pine-600 shrink-0 mt-0.5" />
-                    <span>Permanent 8-character invite codes and direct shareable links.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-pine-600 shrink-0 mt-0.5" />
-                    <span>Permanent historical logbook lock once your crew hits the trail.</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials / Social Proof */}
-        <section
-          aria-labelledby="testimonials-heading"
-          className="py-16 sm:py-20 px-4 sm:px-6 max-w-5xl mx-auto"
-        >
-          <div className="text-center space-y-2 mb-10">
-            <span className="text-xs font-semibold tracking-wider uppercase text-pine-700 bg-pine-100 px-3 py-1 rounded-full">
-              Trailhead Field Proof
-            </span>
-            <h2 id="testimonials-heading" className="text-2xl sm:text-3xl font-serif font-bold text-ink">
-              Trusted by expedition leads and weekend campers
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <blockquote className="bg-canvas-card rounded-2xl border border-canvas-border p-6 sm:p-7 flex flex-col justify-between space-y-4">
-              <p className="text-sm sm:text-base text-ink-muted italic leading-relaxed">
-                &ldquo;We used to have three separate group chats asking &apos;who has the water filter?&apos;. With cohort, six of us packed for a 4-day Olympic wilderness trek without a single missing item or duplicate gear.&rdquo;
-              </p>
-              <footer className="flex items-center gap-3 pt-3 border-t border-canvas-border/60">
-                <div className="w-9 h-9 rounded-full bg-pine-700 text-white font-bold text-xs flex items-center justify-center">
-                  AR
-                </div>
-                <div>
-                  <cite className="not-italic font-semibold text-sm text-ink block">Alex Rivera</cite>
-                  <span className="text-xs text-ink-muted">PNW Backpacking Club Organizer</span>
-                </div>
-              </footer>
-            </blockquote>
-
-            <blockquote className="bg-canvas-card rounded-2xl border border-canvas-border p-6 sm:p-7 flex flex-col justify-between space-y-4">
-              <p className="text-sm sm:text-base text-ink-muted italic leading-relaxed">
-                &ldquo;The wrap-up feature is brilliant. Being able to reopen our exact High Sierra gear list from last July made packing for this summer&apos;s trip take literally 15 minutes.&rdquo;
-              </p>
-              <footer className="flex items-center gap-3 pt-3 border-t border-canvas-border/60">
-                <div className="w-9 h-9 rounded-full bg-amber-600 text-white font-bold text-xs flex items-center justify-center">
-                  ES
-                </div>
-                <div>
-                  <cite className="not-italic font-semibold text-sm text-ink block">Elena Soto</cite>
-                  <span className="text-xs text-ink-muted">Mountaineering & Camp Guide</span>
-                </div>
-              </footer>
-            </blockquote>
-          </div>
-        </section>
-
-        {/* FAQ Accordion */}
-        <section
-          id="faq"
-          aria-labelledby="faq-heading"
-          className="py-16 sm:py-20 px-4 sm:px-6 bg-canvas-subtle/40 border-t border-canvas-border/80"
-        >
-          <div className="max-w-3xl mx-auto space-y-8">
-            <div className="text-center space-y-2">
-              <h2 id="faq-heading" className="text-2xl sm:text-3xl font-serif font-bold text-ink">
-                Frequently Asked Questions
-              </h2>
-              <p className="text-xs sm:text-sm text-ink-muted">
-                Everything you need to know about planning trips with cohort.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                {
-                  q: 'Do my friends need to create an account before seeing an invite?',
-                  a: 'No! When you send an invite link or 8-character code, your friends can immediately view the expedition details and see what gear is needed. They only sign in with a single Google tap when they are ready to claim gear or check off items.',
-                },
-                {
-                  q: 'Is cohort free to use?',
-                  a: 'Yes, cohort is completely free. You can create unlimited trips, invite unlimited collaborators, and access all pre-built expedition templates without paywalls.',
-                },
-                {
-                  q: 'What does "wrapping up" an expedition mean?',
-                  a: 'When your group departs the trailhead, the organizer can wrap up the trip. This permanently locks the checklist into a read-only historical field log so you can look back on past adventures and duplicate what worked.',
-                },
-                {
-                  q: 'Can I create and reuse my own packing templates?',
-                  a: 'Yes! In addition to our pre-built expedition templates (Weekend Backpacking, Alpine Mountaineering, etc.), you can save custom checklists as personal templates for quick reuse.',
-                },
-              ].map((item, idx) => {
-                const isOpen = openFaqIndex === idx;
-                return (
-                  <div
-                    key={idx}
-                    className="bg-canvas-card rounded-xl border border-canvas-border overflow-hidden transition-all"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                      aria-expanded={isOpen}
-                      className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-serif font-bold text-sm sm:text-base text-ink hover:text-pine-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 min-h-[44px]"
-                    >
-                      <span>{item.q}</span>
-                      {isOpen ? (
-                        <ChevronUp className="w-4 h-4 text-pine-600 shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-ink-subtle shrink-0" />
-                      )}
-                    </button>
-                    {isOpen && (
-                      <div className="px-4 pb-4 sm:px-5 sm:pb-5 text-xs sm:text-sm text-ink-muted leading-relaxed border-t border-canvas-border/40 pt-3">
-                        {item.a}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* Final CTA Banner */}
-        <section
-          aria-labelledby="cta-banner-heading"
-          className="py-16 sm:py-24 px-4 sm:px-6 bg-canvas"
-        >
-          <div className="max-w-4xl mx-auto bg-gradient-to-br from-pine-700 via-pine-800 to-pine-900 rounded-3xl p-8 sm:p-12 text-white text-center space-y-6 shadow-lg relative overflow-hidden">
-            {/* Subtle decorative field compass background mark */}
-            <div className="absolute -right-12 -bottom-12 opacity-10 pointer-events-none">
-              <Compass className="w-72 h-72 text-white stroke-[1]" />
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-pine-100 text-xs font-semibold backdrop-blur-xs border border-white/20">
-              <Tent className="w-3.5 h-3.5" />
-              <span>Trailhead Ready</span>
-            </div>
-
-            <h2
-              id="cta-banner-heading"
-              className="text-2xl sm:text-4xl lg:text-5xl font-serif font-bold tracking-tight text-white max-w-2xl mx-auto"
-            >
-              Ready to coordinate your next adventure?
-            </h2>
-
-            <p className="text-sm sm:text-base text-pine-100/90 max-w-xl mx-auto leading-relaxed">
-              Join outdoors enthusiasts and expedition crews who plan with confidence. Zero spreadsheets, zero forgotten gear.
-            </p>
-
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5">
-              <SignInButton
-                mode="modal"
-                fallbackRedirectUrl={resolveDynamicRedirectUrl(currentRedirectUrl, '/')}
-                forceRedirectUrl={resolveDynamicRedirectUrl(currentRedirectUrl, '/')}
-              >
-                <button
-                  type="button"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-white text-pine-800 font-bold text-sm sm:text-base hover:bg-pine-50 shadow-sm transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                >
-                  <span>Plan an Expedition — Free</span>
-                  <ArrowRight className="w-4 h-4 text-pine-700" />
-                </button>
-              </SignInButton>
-
-              <a
-                href="#join-strip"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-white/10 text-white border border-white/25 font-semibold text-sm sm:text-base hover:bg-white/20 transition-all min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                <KeyRound className="w-4 h-4 text-pine-200" />
-                <span>Join with Invite Code</span>
-              </a>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* Accessible Footer */}
-      <footer role="contentinfo" className="bg-white border-t border-canvas-border py-10 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-ink-muted">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded bg-pine-600 text-white flex items-center justify-center">
-              <Compass className="w-4 h-4" />
-            </div>
-            <span className="font-serif font-bold text-base text-ink">cohort</span>
-            <span className="text-ink-subtle">· Trailhead Field Notes</span>
-          </div>
-
-          <p className="text-center sm:text-left">
-            Dependable group expedition & camping gear coordination. Designed to WCAG AA accessibility standards.
-          </p>
-
-          <div className="flex items-center gap-4">
-            <a href="#features" className="hover:text-ink transition-colors">
-              Features
-            </a>
-            <a href="#demo" className="hover:text-ink transition-colors">
-              Simulation
-            </a>
-            <a href="#faq" className="hover:text-ink transition-colors">
-              FAQ
-            </a>
           </div>
         </div>
+      </section>
+
+      <section id="how-it-works" className="mx-auto grid w-full max-w-7xl gap-10 px-5 py-12 sm:px-8 sm:py-20 lg:grid-cols-[.75fr_1.25fr] lg:gap-20 lg:px-10">
+        <div className="max-w-md">
+          <p className="font-mono text-[10px] uppercase tracking-[.2em] text-pine-700">The method / no. 01</p>
+          <h2 className="mt-4 text-4xl font-semibold leading-[1.02] tracking-[-.065em] sm:text-5xl">Good trips start before you leave.</h2>
+          <p className="mt-5 text-sm leading-7 text-ink-muted">The group chat is for the jokes. Cohort keeps the plan, the responsibilities, and the last-minute details in one place.</p>
+          <form onSubmit={submitInvite} className="mt-8 rounded-[22px] border border-canvas-border bg-white p-4 shadow-[0_8px_30px_rgba(23,43,36,.04)]">
+            <label htmlFor="invite-code" className="mb-2 block font-mono text-[10px] uppercase tracking-[.16em] text-ink-muted">Already have an invite?</label>
+            <div className="flex gap-2">
+              <input id="invite-code" value={inviteCode} onChange={(e) => { setInviteCode(e.target.value.toUpperCase()); setInviteError(''); }} placeholder="ENTER CODE" maxLength={16} autoCapitalize="characters" className="min-w-0 flex-1 rounded-xl border border-canvas-border bg-canvas px-3.5 py-3 font-mono text-sm uppercase tracking-[.13em] outline-none transition placeholder:text-ink-subtle/60 focus:border-pine-600 focus:ring-2 focus:ring-pine-600/15" />
+              <button type="submit" aria-label="Join trip with invite code" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink text-white transition hover:bg-pine-700"><ArrowRight className="h-5 w-5" /></button>
+            </div>
+            {inviteError && <p role="alert" className="mt-2 text-xs font-medium text-terracotta-700">{inviteError}</p>}
+            <p className="mt-2 text-[11px] text-ink-subtle">Private trips are only visible to invited members.</p>
+          </form>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <article className="group rounded-[24px] border border-canvas-border bg-white p-6 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-ink/5 sm:p-7">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e4edda] text-pine-700"><Users className="h-5 w-5" /></span>
+            <p className="mt-8 font-mono text-[10px] uppercase tracking-[.17em] text-ink-subtle">01 / Share the load</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-[-.04em]">One crew. One checklist.</h3>
+            <p className="mt-3 text-sm leading-6 text-ink-muted">Assign gear, quantities, and ownership so the essentials are covered without ten duplicate messages.</p>
+          </article>
+          <article className="group rounded-[24px] border border-canvas-border bg-white p-6 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-ink/5 sm:p-7">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f8e9c9] text-[#85520a]"><Layers3 className="h-5 w-5" /></span>
+            <p className="mt-8 font-mono text-[10px] uppercase tracking-[.17em] text-ink-subtle">02 / Start with a system</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-[-.04em]">Reuse your good lists.</h3>
+            <p className="mt-3 text-sm leading-6 text-ink-muted">Keep personal packing templates and bring the right starting point to every new adventure.</p>
+          </article>
+          <article className="group rounded-[24px] border border-canvas-border bg-white p-6 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-ink/5 sm:p-7">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f7e0d5] text-terracotta-700"><ShieldCheck className="h-5 w-5" /></span>
+            <p className="mt-8 font-mono text-[10px] uppercase tracking-[.17em] text-ink-subtle">03 / Keep the record</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-[-.04em]">Finish with confidence.</h3>
+            <p className="mt-3 text-sm leading-6 text-ink-muted">Completed trips lock their final checklist, keeping a dependable record for the next time around.</p>
+          </article>
+          <article className="relative overflow-hidden rounded-[24px] bg-[#dce8cc] p-6 sm:p-7">
+            <div className="absolute -bottom-10 -right-7 text-pine-700/10"><Mountain className="h-44 w-44" strokeWidth={1} /></div>
+            <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white/70 text-pine-800"><Backpack className="h-5 w-5" /></span>
+            <p className="relative mt-8 font-mono text-[10px] uppercase tracking-[.17em] text-pine-800/70">The point of it all</p>
+            <h3 className="relative mt-2 text-xl font-semibold tracking-[-.04em] text-pine-900">More trail time. Less admin.</h3>
+            <p className="relative mt-3 text-sm leading-6 text-pine-900/75">Spend less time coordinating and more time making the memories you planned for.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="field-notes" className="px-5 py-10 sm:px-8 sm:py-16 lg:px-10">
+        <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[28px] bg-[#e8e9df] md:grid-cols-[.9fr_1.1fr]">
+          <div className="p-7 sm:p-10 lg:p-14">
+            <p className="font-mono text-[10px] uppercase tracking-[.2em] text-pine-700">Field notes / the philosophy</p>
+            <h2 className="mt-4 max-w-md text-4xl font-semibold leading-[1.02] tracking-[-.065em] sm:text-5xl">The best gear is the gear you remembered.</h2>
+            <p className="mt-5 max-w-md text-sm leading-7 text-ink-muted">A small amount of shared planning makes a big difference. Know what is covered, who is bringing it, and what still needs attention before the trailhead.</p>
+            <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/60 px-4 py-2.5 text-xs font-semibold"><CalendarDays className="h-4 w-4 text-pine-700" /> Plan together, then go.</div>
+          </div>
+          <div className="relative flex min-h-[300px] items-end overflow-hidden bg-[#243b2f] p-7 text-white sm:min-h-[420px] sm:p-10">
+            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(ellipse at 70% 25%, #b5e46a 0, transparent 28%), linear-gradient(155deg, transparent 35%, #0c1b14 35.2%, #0c1b14 49%, transparent 49.2%), linear-gradient(25deg, transparent 40%, #5c7a4c 40.2%, #5c7a4c 58%, transparent 58.2%)' }} />
+            <div className="absolute inset-0 cohort-grid opacity-20" />
+            <div className="relative max-w-md">
+              <Flame className="mb-5 h-7 w-7 text-[#b5e46a]" />
+              <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#b5e46a]">A better kind of together</p>
+              <p className="mt-3 text-3xl font-medium leading-tight tracking-[-.05em] sm:text-4xl">You bring the people. We’ll help with the details.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" className="mx-auto w-full max-w-4xl px-5 py-16 sm:px-8 sm:py-24">
+        <div className="text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[.2em] text-pine-700">Field guide / FAQ</p>
+          <h2 className="mt-4 text-4xl font-semibold tracking-[-.065em] sm:text-5xl">Before you head out.</h2>
+        </div>
+        <div className="mt-10 divide-y divide-canvas-border border-y border-canvas-border">
+          {faqs.map((faq, index) => (
+            <div key={faq.q}>
+              <button type="button" aria-expanded={faqOpen === index} onClick={() => setFaqOpen(faqOpen === index ? null : index)} className="flex w-full items-center justify-between gap-4 py-5 text-left text-sm font-semibold sm:py-6 sm:text-base">
+                {faq.q}<span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition ${faqOpen === index ? 'rotate-90 bg-ink text-white' : 'bg-white text-ink-muted'}`}><ChevronRight className="h-4 w-4" /></span>
+              </button>
+              {faqOpen === index && <p className="max-w-2xl pb-6 pr-10 text-sm leading-7 text-ink-muted">{faq.a}</p>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <footer className="border-t border-canvas-border bg-[#e9ece3] px-5 py-8 sm:px-8 lg:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-pine-100"><Compass className="h-4 w-4" /></span>
+            <span><span className="block text-lg font-semibold tracking-[-.06em]">cohort<span className="text-pine-600">.</span></span><span className="block font-mono text-[9px] uppercase tracking-[.17em] text-ink-subtle">Make room for the good part</span></span>
+          </Link>
+          <div className="flex flex-wrap items-center gap-5 text-xs font-medium text-ink-muted"><a href="#how-it-works" className="hover:text-ink">How it works</a><a href="#faq" className="hover:text-ink">FAQ</a><SignInButton mode="modal" fallbackRedirectUrl={resolveDynamicRedirectUrl('/', '/')} forceRedirectUrl={resolveDynamicRedirectUrl('/', '/')}><button className="inline-flex items-center gap-1 hover:text-ink">Get started <ArrowUpRight className="h-3.5 w-3.5" /></button></SignInButton></div>
+          <p className="font-mono text-[10px] uppercase tracking-[.12em] text-ink-subtle">Made for the miles ahead.</p>
+        </div>
       </footer>
-    </div>
+    </main>
   );
 }
