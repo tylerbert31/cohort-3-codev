@@ -45,7 +45,7 @@ Keep Cohort’s “Trailhead Field Notes” identity, but make the event page fe
 - [x] Simplify the checklist action model. Decide which action owns each task:
   - [x] One clear global entry point for adding an unsectioned item.
   - [x] One clear entry point for adding an item to a specific section.
-  - [ ] One clear entry point for adding a category.
+  - [x] One clear entry point for adding a category.
   - [x] Remove or redesign redundant entry points; retain quick-add only if its speed benefit and distinction from the detailed item form are clear.
 - [x] Redesign the section header as a responsive grid, not a single crowded flex row. The title gets the flexible area; progress and actions must keep their own space and never overlap or wrap into broken two-line controls.
 - [x] Shorten the uncategorized section title to **General items** in the interface. Do not change stored data solely to achieve the shorter label.
@@ -54,7 +54,7 @@ Keep Cohort’s “Trailhead Field Notes” identity, but make the event page fe
 ### P1 — Rebuild checklist visual hierarchy
 
 - [x] Increase item title prominence and readability. Target 15–16 px or larger for primary item names, with comfortable line height and wrapping for long names.
-- [ ] Establish a consistent type scale for page title, section title, item name, supporting metadata, count, and controls. Avoid using 11–12 px text for frequently read labels or primary actions.
+- [x] Establish a more consistent type scale for section title, item name, supporting metadata, count, and controls. Primary item names are 15–16 px; frequent metadata and counts are 12 px or larger. Full-page typography still needs visual verification.
 - [x] Remove nested “card inside card” styling. Use a section container with simple separated rows/dividers; make checklist rows visually part of the section instead of independent competing panels.
 - [ ] Redesign each section header with a predictable layout:
   - [ ] Section title on the first line.
@@ -65,7 +65,7 @@ Keep Cohort’s “Trailhead Field Notes” identity, but make the event page fe
 - [ ] Normalize section and item spacing. Use consistent vertical rhythm and avoid large empty gaps between controls and the first item.
 - [x] Refine the filter segmented control: consistent 44 px minimum control height, readable labels, clear selected state, and usable behavior at narrow widths.
 - [ ] Align buttons consistently. Avoid “Add Item” wrapping onto two lines or separating its icon and label. If a compact icon-only action is used, add a meaningful `aria-label` and visible focus state.
-- [ ] Use a consistent presentation for section progress, overall progress, and member counts. Labels should be short, understandable, and visually subordinate to the task content.
+- [x] Use a consistent presentation for section progress, overall progress, and member counts. Labels are short and visually subordinate to task content.
 - [ ] Verify long trip names, long section names, long item names, long destinations, missing dates, zero items, and large counts.
 
 ### P2 — Polish interaction and accessibility
@@ -110,3 +110,28 @@ Use these as usability constraints and inspiration, not as templates to copy:
 ---
 
 **Definition of done:** every P0 item is completed before visual polish is considered done; P1/P2 items and acceptance checks are completed before the PR is moved out of draft.
+
+
+## 7. Implementation pass — October 24, 2026
+
+### Implemented on `feature/ui-design-overhaul`
+
+- [x] Event navigation now has a dedicated segmented variant, short mobile labels (**List**, **People**, **Activity**), stable equal-width segments, count badges, and keyboard navigation using arrow keys, Home, and End.
+- [x] Added tab-panel roles and label relationships for the trip checklist, people, and activity panels.
+- [x] Replaced filter strings such as `Unassigned (1)` with distinct, single-line count chips so labels and counts do not wrap together.
+- [x] Added a persistent mobile **Add item** action above bottom navigation; it opens the complete item form with the general/unsectioned destination preselected, without requiring the user to scroll to the general-items section.
+- [x] Kept an equivalent **Add item** action in the desktop toolbar.
+- [x] Removed the redundant inline quick-add form from the general-items section. Section-specific quick-add remains available within each named category.
+- [x] Kept **Add Category** separate from the primary add-item action.
+- [x] Simplified checklist items to shared section-level dividers, clarified item text, increased checkbox/tap affordance, and made assignee badges more legible with a slightly larger avatar and text.
+- [x] Kept delete-category accessible as a labeled 44 × 44 px control; infrequent category deletion no longer competes with add-item actions.
+- [x] Updated `src/components/ui/tabs.tsx`, `src/components/ui/checklist-row.tsx`, and `src/app/events/[id]/event-view.tsx`.
+
+### Still required before approval
+
+- [ ] Run `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build`.
+- [ ] Capture browser screenshots at 320, 360, 375, 390, and 424 px widths and at desktop width.
+- [ ] Verify the persistent Add item action does not overlap the fixed bottom navigation or dialogs, including devices with a safe-area inset.
+- [ ] Verify tabs at 320 px with two-digit counts, long trip/category/item names, the full item form and section quick-add workflows, and completed/locked trips.
+- [ ] Verify add/edit/assign/complete/delete item workflows, delete category behavior, and live/realtime updates still work.
+- [ ] Recheck keyboard navigation, focus visibility, screen-reader names, and color contrast after running the app.
