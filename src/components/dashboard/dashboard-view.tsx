@@ -169,10 +169,10 @@ export function DashboardView() {
       <div className="space-y-7">
         {/* Trip planning header */}
         <section className="relative isolate overflow-hidden rounded-[28px] bg-[#173b2e] px-5 py-6 text-white shadow-[0_18px_45px_rgba(23,59,46,.15)] sm:px-8 sm:py-8">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 cohort-grid opacity-40" />
-          <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 -z-10 h-64 w-64 rounded-full border border-white/10 sm:right-8 sm:top-[-7rem] sm:h-80 sm:w-80" />
-          <div aria-hidden="true" className="pointer-events-none absolute right-8 top-8 -z-10 h-28 w-28 rounded-full border border-[#d6ef9c]/25 sm:right-24 sm:top-12 sm:h-40 sm:w-40" />
-          <div className="relative flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 cohort-grid opacity-40" />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 z-0 h-64 w-64 rounded-full border border-white/10 sm:right-8 sm:top-[-7rem] sm:h-80 sm:w-80" />
+          <div aria-hidden="true" className="pointer-events-none absolute right-8 top-8 z-0 h-28 w-28 rounded-full border border-[#d6ef9c]/25 sm:right-24 sm:top-12 sm:h-40 sm:w-40" />
+          <div className="relative z-10 flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-xl">
               <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.07] px-3 py-1.5 text-xs font-medium text-[#d8e9d0]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#d6ef9c]" /> Your shared trip space
@@ -193,7 +193,7 @@ export function DashboardView() {
               </Button>
             </div>
           </div>
-          <div className="relative mt-7 grid grid-cols-3 border-t border-white/15 pt-4 sm:mt-8 sm:max-w-xl">
+          <div className="relative z-10 mt-7 grid grid-cols-3 border-t border-white/15 pt-4 sm:mt-8 sm:max-w-xl">
             <div><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.active.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Active trips</p></div>
             <div className="border-l border-white/15 pl-4"><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.completed.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Completed</p></div>
             <div className="border-l border-white/15 pl-4"><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.archived.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Archived</p></div>
