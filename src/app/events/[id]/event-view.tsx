@@ -167,7 +167,6 @@ export default function EventView({
   const [isSubmittingEditItem, setIsSubmittingEditItem] = useState(false);
   const [isDeletingEditItem, setIsDeletingEditItem] = useState(false);
   const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
-  const [quickAddDirectTitle, setQuickAddDirectTitle] = useState('');
 
   // Template forms
   const [templateName, setTemplateName] = useState('');
@@ -382,35 +381,6 @@ export default function EventView({
             sec.id === sectionId ? { ...sec, items: [...sec.items, { ...newItem, assignee }] } : sec
           )
         );
-        broadcastUpdate();
-      } else {
-        setActionError(res.error || 'Failed to add item');
-      }
-    } catch {
-      setActionError('Failed to add item');
-    }
-  };
-
-  const handleQuickAddDirect = async () => {
-    const title = quickAddDirectTitle.trim();
-    if (!title || isLocked) return;
-
-    setQuickAddDirectTitle('');
-
-    try {
-      const res = await createItemAction({
-        eventId: event.id,
-        section_id: null,
-        title,
-      });
-
-      if (res.success && res.data) {
-        const newItem = res.data;
-        const assignee = newItem.assignee_id
-          ? members.find((m) => m.clerk_user_id === newItem.assignee_id)?.profile || null
-          : null;
-
-        setUnsectionedItems((prev) => [...prev, { ...newItem, assignee }]);
         broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to add item');
@@ -1154,6 +1124,24 @@ export default function EventView({
                   Add Category
                 </Button>
 
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => {
+                    setSelectedSectionId(null);
+                    setItemTitle('');
+                    setItemQuantity('');
+                    setItemNotes('');
+                    setItemAssigneeId('');
+                    setItemDeadline('');
+                    setIsAddItemOpen(true);
+                  }}
+                  className="hidden h-11 justify-center text-sm font-medium sm:inline-flex"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Add item
+                </Button>
+
 
               </div>
             )}
@@ -1250,7 +1238,7 @@ export default function EventView({
                         : `No direct items matching "${filterMode}".`}
                     </div>
                   ) : (
-                    <div className="divide-y divide-canvas-border/70">
+                    <div className="space-y-0">
                       {filteredUnsectionedItems.map((item) => (
                         <ChecklistRow
                           key={item.id}
