@@ -645,7 +645,8 @@ export class EventsRepository {
   static async deleteSection(
     clerkUserId: string,
     eventId: string,
-    sectionId: string
+    sectionId: string,
+    options?: { keepItems?: boolean }
   ): Promise<void> {
     const event = memoryStore.events.get(eventId);
     if (!event) throw new Error('EVENT_NOT_FOUND');
@@ -658,10 +659,19 @@ export class EventsRepository {
     const filteredSections = sections.filter((s) => s.id !== sectionId);
     memoryStore.sections.set(eventId, filteredSections);
 
-    // Remove items belonging to the section
     const items = memoryStore.items.get(eventId) || [];
-    const filteredItems = items.filter((i) => i.section_id !== sectionId);
-    memoryStore.items.set(eventId, filteredItems);
+    if (options?.keepItems) {
+      items.forEach((item) => {
+        if (item.section_id === sectionId) {
+          item.section_id = null;
+          item.updated_at = new Date().toISOString();
+        }
+      });
+      memoryStore.items.set(eventId, items);
+    } else {
+      const filteredItems = items.filter((i) => i.section_id !== sectionId);
+      memoryStore.items.set(eventId, filteredItems);
+    }
   }
 
   /**

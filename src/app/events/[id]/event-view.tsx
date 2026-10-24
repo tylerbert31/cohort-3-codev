@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type {
@@ -21,6 +22,7 @@ import {
 import { generateInviteCodeAction, revokeInviteCodeAction } from '@/server/actions/invitations';
 import {
   createSectionAction,
+  deleteSectionAction,
   createItemAction,
   updateItemAction,
   toggleItemCompletionAction,
@@ -56,6 +58,7 @@ import {
   ArrowLeft,
   PackageCheck,
   Send,
+  Trash2,
 } from 'lucide-react';
 
 interface EventViewProps {
@@ -96,6 +99,9 @@ export default function EventView({
   const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [sectionToDelete, setSectionToDelete] = useState<(ChecklistSection & { items: ChecklistItem[] }) | null>(null);
+  const [deleteSectionKeepItems, setDeleteSectionKeepItems] = useState(true);
+  const [isDeletingSection, setIsDeletingSection] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
@@ -362,6 +368,58 @@ export default function EventView({
       setActionError('Failed to add category');
     } finally {
       setIsSubmittingSection(false);
+    }
+  };
+
+  const handleOpenDeleteSection = (sec: ChecklistSection & { items: ChecklistItem[] }) => {
+    if (isLocked) return;
+    setSectionToDelete(sec);
+    setDeleteSectionKeepItems(true);
+    setActionError(null);
+  };
+
+  const handleCloseDeleteSection = () => {
+    setSectionToDelete(null);
+    setIsDeletingSection(false);
+  };
+
+  const handleConfirmDeleteSection = async () => {
+    if (!sectionToDelete || isLocked) return;
+
+    setIsDeletingSection(true);
+    setActionError(null);
+
+    const targetSectionId = sectionToDelete.id;
+    const itemsToMove = sectionToDelete.items;
+    const shouldKeepItems = deleteSectionKeepItems;
+
+    try {
+      const res = await deleteSectionAction({
+        eventId: event.id,
+        sectionId: targetSectionId,
+        keepItems: shouldKeepItems,
+      });
+
+      if (res.success) {
+        setSections((prev) => prev.filter((s) => s.id !== targetSectionId));
+
+        if (shouldKeepItems && itemsToMove.length > 0) {
+          const unsectionedConverted = itemsToMove.map((i) => ({
+            ...i,
+            section_id: null,
+          }));
+          setUnsectionedItems((prev) => [...prev, ...unsectionedConverted]);
+        }
+
+        handleCloseDeleteSection();
+        broadcastUpdate();
+      } else {
+        setActionError(res.error || 'Failed to remove category');
+      }
+    } catch {
+      setActionError('Failed to remove category');
+    } finally {
+      setIsDeletingSection(false);
     }
   };
 
@@ -1130,23 +1188,35 @@ export default function EventView({
                       </div>
 
                       {!isLocked && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedSectionId(section.id);
-                            setItemTitle('');
-                            setItemQuantity('');
-                            setItemNotes('');
-                            setItemAssigneeId('');
-                            setItemDeadline('');
-                            setIsAddItemOpen(true);
-                          }}
-                          className="h-7 px-2.5 text-xs gap-1 text-pine-700 border-pine-200 hover:bg-pine-50 hover:border-pine-300"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Add Item</span>
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedSectionId(section.id);
+                              setItemTitle('');
+                              setItemQuantity('');
+                              setItemNotes('');
+                              setItemAssigneeId('');
+                              setItemDeadline('');
+                              setIsAddItemOpen(true);
+                            }}
+                            className="h-7 px-2.5 text-xs gap-1 text-pine-700 border-pine-200 hover:bg-pine-50 hover:border-pine-300"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Item</span>
+                          </Button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDeleteSection(section)}
+                            aria-label={`Remove category ${section.title}`}
+                            title="Remove Category"
+                            className="p-1.5 rounded-lg text-ink-muted hover:text-terracotta-600 hover:bg-terracotta-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -1354,6 +1424,120 @@ export default function EventView({
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Remove Category Modal */}
+      <Dialog
+        isOpen={Boolean(sectionToDelete)}
+        onClose={handleCloseDeleteSection}
+        title="Remove Category"
+        description={
+          sectionToDelete
+            ? `Are you sure you want to remove "${sectionToDelete.title}"?`
+            : undefined
+        }
+      >
+        {sectionToDelete && (
+          <div className="space-y-4 py-1">
+            {sectionToDelete.items.length > 0 ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
+                  <p className="font-semibold text-amber-950 mb-1">
+                    This category contains {sectionToDelete.items.length}{' '}
+                    {sectionToDelete.items.length === 1 ? 'item' : 'items'}.
+                  </p>
+                  <p>
+                    What would you like to do with the gear in this category?
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    className={cn(
+                      'flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all',
+                      deleteSectionKeepItems
+                        ? 'border-pine-600 bg-pine-50/50'
+                        : 'border-canvas-border hover:bg-canvas-subtle/50'
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="deleteSectionMode"
+                      checked={deleteSectionKeepItems}
+                      onChange={() => setDeleteSectionKeepItems(true)}
+                      className="mt-0.5 text-pine-600 focus:ring-pine-600"
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-ink block">
+                        Keep items and move to General Items (Recommended)
+                      </span>
+                      <span className="text-[11px] text-ink-muted">
+                        Gear items will not be deleted; they will be moved to the unsectioned list.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label
+                    className={cn(
+                      'flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all',
+                      !deleteSectionKeepItems
+                        ? 'border-terracotta-500 bg-terracotta-50/40'
+                        : 'border-canvas-border hover:bg-canvas-subtle/50'
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="deleteSectionMode"
+                      checked={!deleteSectionKeepItems}
+                      onChange={() => setDeleteSectionKeepItems(false)}
+                      className="mt-0.5 text-terracotta-600 focus:ring-terracotta-600"
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-terracotta-700 block">
+                        Delete category and all its items
+                      </span>
+                      <span className="text-[11px] text-ink-muted">
+                        Permanently remove all {sectionToDelete.items.length} items inside this category.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-ink-muted">
+                This category has no items. Removing it will not delete any gear.
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-canvas-border">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCloseDeleteSection}
+                disabled={isDeletingSection}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmDeleteSection}
+                isLoading={isDeletingSection}
+                className={cn(
+                  !deleteSectionKeepItems && sectionToDelete.items.length > 0
+                    ? 'bg-terracotta-600 hover:bg-terracotta-700 text-white'
+                    : undefined
+                )}
+              >
+                {deleteSectionKeepItems && sectionToDelete.items.length > 0
+                  ? 'Move Items & Remove Category'
+                  : 'Remove Category'}
+              </Button>
+            </div>
+          </div>
+        )}
       </Dialog>
 
       {/* Add Item Modal */}

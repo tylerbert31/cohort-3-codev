@@ -75,6 +75,7 @@ export async function updateSectionAction(input: {
 export async function deleteSectionAction(input: {
   eventId: string;
   sectionId: string;
+  keepItems?: boolean;
 }): Promise<ActionResponse<boolean>> {
   try {
     const { userId } = await auth();
@@ -82,7 +83,9 @@ export async function deleteSectionAction(input: {
       return { success: false, error: 'Authentication required.', code: 'UNAUTHORIZED' };
     }
 
-    await EventsRepository.deleteSection(userId, input.eventId, input.sectionId);
+    await EventsRepository.deleteSection(userId, input.eventId, input.sectionId, {
+      keepItems: input.keepItems,
+    });
 
     revalidatePath(`/events/${input.eventId}`);
     return { success: true, data: true };
