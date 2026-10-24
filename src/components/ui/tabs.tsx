@@ -7,6 +7,7 @@ export interface TabItem {
   id: string;
   label: string;
   count?: number;
+  mobileLabel?: string;
 }
 
 export interface TabsProps {
@@ -29,7 +30,7 @@ export const Tabs: React.FC<TabsProps> = ({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        'flex items-center gap-1 px-1 border-b border-canvas-border overflow-x-auto scrollbar-none select-none',
+        'grid w-full grid-cols-3 items-stretch gap-1 border-b border-canvas-border px-0 select-none',
         className
       )}
     >
@@ -45,14 +46,15 @@ export const Tabs: React.FC<TabsProps> = ({
             id={`tab-${tab.id}`}
             onClick={() => onChange(tab.id)}
             className={cn(
-              'min-h-[44px] px-3.5 py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 -mb-[1px] whitespace-nowrap shrink-0 flex items-center gap-1.5',
+              'flex min-h-[48px] min-w-0 items-center justify-center gap-1.5 border-b-2 px-1.5 py-2 text-xs font-medium leading-tight transition-colors sm:px-3 sm:text-sm',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600',
               isActive
                 ? 'border-pine-600 text-pine-700 font-semibold'
                 : 'border-transparent text-ink-muted hover:text-ink hover:border-canvas-muted'
             )}
           >
-            <span>{tab.label}</span>
+            <span className="truncate sm:hidden">{tab.mobileLabel ?? tab.label}</span>
+            <span className="hidden truncate sm:inline">{tab.label}</span>
             {typeof tab.count === 'number' && (
               <span
                 className={cn(
