@@ -24,68 +24,106 @@ export const Dialog: React.FC<DialogProps> = ({
   const titleId = useId();
   const descId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
 
   useEffect(() => {
-    if (isOpen) {
-      previousActiveElement.current = document.activeElement as HTMLElement;
-      document.body.style.overflow = 'hidden';
+    onCloseRef.current = onClose;
+  });
 
-      // Focus first focusable element inside dialog or dialog container itself
-      setTimeout(() => {
-        if (dialogRef.current) {
-          const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          );
-          if (focusable.length > 0) {
-            focusable[0].focus();
-          } else {
-            dialogRef.current.focus();
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousActiveElement.current = document.activeElement as HTMLElement;
+    document.body.style.overflow = 'hidden';
+
+    const focusableSelector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    // Focus management on dialog open:
+    // If activeElement is already inside the dialog (e.g. from React autoFocus), don't disturb it.
+    // Otherwise, check for autofocus attribute, then first content focusable, then first dialog focusable.
+    const timer = setTimeout(() => {
+      if (!dialogRef.current) return;
+
+      const currentActive = document.activeElement;
+      if (
+        currentActive &&
+        dialogRef.current.contains(currentActive) &&
+        currentActive !== dialogRef.current
+      ) {
+        return;
+      }
+
+      const autoFocusEl = dialogRef.current.querySelector<HTMLElement>(
+        '[autofocus], [data-autofocus]'
+      );
+      if (autoFocusEl) {
+        autoFocusEl.focus();
+        return;
+      }
+
+      const contentFocusable =
+        contentRef.current?.querySelectorAll<HTMLElement>(focusableSelector);
+      if (contentFocusable && contentFocusable.length > 0) {
+        contentFocusable[0].focus();
+        return;
+      }
+
+      const allFocusable =
+        dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector);
+      if (allFocusable.length > 0) {
+        allFocusable[0].focus();
+        return;
+      }
+
+      dialogRef.current.focus();
+    }, 50);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCloseRef.current();
+        return;
+      }
+
+      // Focus trap
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable =
+          dialogRef.current.querySelectorAll<HTMLElement>(focusableSelector);
+        if (focusable.length === 0) return;
+
+        const firstEl = focusable[0];
+        const lastEl = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
           }
         }
-      }, 50);
+      }
+    };
 
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          onClose();
-          return;
-        }
+    window.addEventListener('keydown', handleKeyDown);
 
-        // Focus trap
-        if (e.key === 'Tab' && dialogRef.current) {
-          const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          );
-          if (focusable.length === 0) return;
-
-          const firstEl = focusable[0];
-          const lastEl = focusable[focusable.length - 1];
-
-          if (e.shiftKey) {
-            if (document.activeElement === firstEl) {
-              e.preventDefault();
-              lastEl.focus();
-            }
-          } else {
-            if (document.activeElement === lastEl) {
-              e.preventDefault();
-              firstEl.focus();
-            }
-          }
-        }
-      };
-
-      window.addEventListener('keydown', handleKeyDown);
-
-      return () => {
-        document.body.style.overflow = '';
-        window.removeEventListener('keydown', handleKeyDown);
-        if (previousActiveElement.current) {
-          previousActiveElement.current.focus();
-        }
-      };
-    }
-  }, [isOpen, onClose]);
+    return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+      if (
+        previousActiveElement.current &&
+        typeof previousActiveElement.current.focus === 'function'
+      ) {
+        previousActiveElement.current.focus();
+      }
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -96,7 +134,7 @@ export const Dialog: React.FC<DialogProps> = ({
       aria-labelledby={titleId}
       aria-describedby={description ? descId : undefined}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-ink/40 backdrop-blur-xs transition-opacity"
-      onClick={onClose}
+      onClick={() => onCloseRef.current()}
     >
       <div
         ref={dialogRef}
@@ -126,7 +164,7 @@ export const Dialog: React.FC<DialogProps> = ({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => onCloseRef.current()}
             aria-label="Close dialog"
             className="touch-target rounded-lg text-ink-muted hover:text-ink hover:bg-canvas-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
           >
@@ -135,7 +173,7 @@ export const Dialog: React.FC<DialogProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-5 overflow-y-auto">{children}</div>
+        <div ref={contentRef} className="p-5 overflow-y-auto">{children}</div>
 
         {/* Footer */}
         {footer && (

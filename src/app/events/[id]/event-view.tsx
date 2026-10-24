@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type {
@@ -16,6 +16,7 @@ import {
   archiveEventAction,
   restoreEventAction,
   completeEventAction,
+  getEventDetailsAction,
 } from '@/server/actions/events';
 import { generateInviteCodeAction, revokeInviteCodeAction } from '@/server/actions/invitations';
 import {
@@ -133,12 +134,36 @@ export default function EventView({
   const isArchived = event.status === 'archived';
   const isOwner = userRole === 'owner';
 
-  // Realtime subscription
-  const { status: realtimeStatus } = useEventRealtime({
+  // Synchronize internal state with server props when updated
+  useEffect(() => {
+    setEvent(initialEvent);
+    setMembers(initialMembers);
+    setActivities(initialActivities);
+    setSections(initialSections);
+    setUnsectionedItems(initialUnsectionedItems || []);
+  }, [initialEvent, initialMembers, initialActivities, initialSections, initialUnsectionedItems]);
+
+  // Full refresh helper that pulls fresh data and updates state
+  const refreshEventData = useCallback(async () => {
+    try {
+      const res = await getEventDetailsAction(event.id);
+      if (res.success && res.data) {
+        setEvent(res.data.event);
+        setMembers(res.data.members);
+        setActivities(res.data.activities);
+        setSections(res.data.sections);
+        setUnsectionedItems(res.data.unsectionedItems);
+      }
+    } catch (err) {
+      console.error('Failed to refresh event data:', err);
+    }
+    router.refresh();
+  }, [event.id, router]);
+
+  // Realtime subscription (WebSockets + BroadcastChannel)
+  const { status: realtimeStatus, broadcastUpdate } = useEventRealtime({
     eventId: event.id,
-    onRefresh: () => {
-      router.refresh();
-    },
+    onRefresh: refreshEventData,
   });
 
   // Calculate completion
@@ -184,11 +209,13 @@ export default function EventView({
       });
       if (!res.success) {
         setActionError(res.error || 'Failed to update item status');
-        router.refresh();
+        refreshEventData();
+      } else {
+        broadcastUpdate();
       }
     } catch {
       setActionError('Failed to communicate with server');
-      router.refresh();
+      refreshEventData();
     }
   };
 
@@ -215,11 +242,13 @@ export default function EventView({
       });
       if (!res.success) {
         setActionError(res.error || 'Failed to delete item');
-        router.refresh();
+        refreshEventData();
+      } else {
+        broadcastUpdate();
       }
     } catch {
       setActionError('Error deleting item');
-      router.refresh();
+      refreshEventData();
     }
   };
 
@@ -248,6 +277,7 @@ export default function EventView({
             sec.id === sectionId ? { ...sec, items: [...sec.items, { ...newItem, assignee }] } : sec
           )
         );
+        broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to add item');
       }
@@ -276,6 +306,7 @@ export default function EventView({
           : null;
 
         setUnsectionedItems((prev) => [...prev, { ...newItem, assignee }]);
+        broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to add item');
       }
@@ -301,6 +332,7 @@ export default function EventView({
         setSections((prev) => [...prev, { ...res.data!, items: [] }]);
         setSectionTitle('');
         setIsAddSectionOpen(false);
+        broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to add category');
       }
@@ -351,6 +383,7 @@ export default function EventView({
         setItemNotes('');
         setItemAssigneeId('');
         setIsAddItemOpen(false);
+        broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to add item');
       }
@@ -391,6 +424,7 @@ export default function EventView({
       if (res.success) {
         setInviteCode(null);
         setIsInviteOpen(false);
+        broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to revoke code');
       }
@@ -415,10 +449,16 @@ export default function EventView({
     try {
       if (isArchived) {
         const res = await restoreEventAction(event.id);
-        if (res.success && res.data) setEvent(res.data);
+        if (res.success && res.data) {
+          setEvent(res.data);
+          broadcastUpdate();
+        }
       } else {
         const res = await archiveEventAction(event.id);
-        if (res.success && res.data) setEvent(res.data);
+        if (res.success && res.data) {
+          setEvent(res.data);
+          broadcastUpdate();
+        }
       }
     } catch {
       setActionError('Failed to update archive status');
@@ -438,6 +478,7 @@ export default function EventView({
       if (res.success && res.data) {
         setEvent(res.data);
         setIsCompleteModalOpen(false);
+        broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to wrap up trip');
       }
@@ -512,7 +553,8 @@ export default function EventView({
       });
       if (res.success) {
         setIsApplyTemplateOpen(false);
-        router.refresh();
+        await refreshEventData();
+        broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to apply template');
       }
