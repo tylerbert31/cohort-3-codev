@@ -18,9 +18,30 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'cohort — Make room for the good part',
-  description: 'The shared trip checklist that keeps your people, gear, and plans moving together.',
-  icons: { icon: '/favicon.ico' },
+  title: 'WanderList — Make room for the good part',
+  description:
+    'Plan trips together with shared packing lists, assigned gear, and live progress. WanderList keeps every traveler in sync from the first plan to the final pack.',
+  applicationName: 'WanderList',
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  ),
+  openGraph: {
+    type: 'website',
+    siteName: 'WanderList',
+    title: 'WanderList — Make room for the good part',
+    description:
+      'Plan trips together with shared packing lists, assigned gear, and live progress. Keep every traveler in sync from the first plan to the final pack.',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'WanderList — Make room for the good part',
+    description:
+      'Plan trips together with shared packing lists, assigned gear, and live progress. Keep every traveler in sync from the first plan to the final pack.',
+  },
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    shortcut: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

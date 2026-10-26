@@ -28,12 +28,12 @@ export const AppShell: React.FC<AppShellProps> = ({
     <div className="min-h-screen flex flex-col bg-canvas text-ink">
       <header className="sticky top-0 z-40 border-b border-canvas-border/80 bg-canvas/90 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-7 lg:px-10">
-          <Link href="/" className="group flex items-center gap-3 rounded-xl focus-visible:outline-none" aria-label="cohort home">
+          <Link href="/" className="group flex items-center gap-3 rounded-xl focus-visible:outline-none" aria-label="WanderList home">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ink text-pine-100 shadow-sm transition-transform group-hover:-rotate-6">
               <Compass className="h-5 w-5" strokeWidth={1.8} />
             </span>
             <span className="flex flex-col leading-none">
-              <span className="text-[21px] font-semibold tracking-[-0.06em]">cohort<span className="text-pine-600">.</span></span>
+              <span className="text-[21px] font-semibold tracking-[-0.06em]">WanderList<span className="text-pine-600">.</span></span>
               <span className="mt-1 font-mono text-[9px] uppercase tracking-[.19em] text-ink-subtle">Go together</span>
             </span>
           </Link>

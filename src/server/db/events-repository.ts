@@ -438,9 +438,9 @@ export class EventsRepository {
    * Lists events for the authenticated user, separated by lifecycle state.
    */
   static async listEventsForUser(clerkUserId: string | null | undefined): Promise<{
-    active: (Event & { itemCount: number; completedItemCount: number })[];
-    archived: (Event & { itemCount: number; completedItemCount: number })[];
-    completed: (Event & { itemCount: number; completedItemCount: number })[];
+    active: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
+    archived: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
+    completed: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
   }> {
     if (!clerkUserId) {
       throw new AuthorizationError('Authentication required to list events.', 'UNAUTHORIZED');
@@ -467,27 +467,29 @@ export class EventsRepository {
 
         const { data: itemsData } = await supabaseAdmin
           .from('checklist_items')
-          .select('event_id, is_completed')
+          .select('event_id, is_completed, assignee_id')
           .in('event_id', eventIds);
 
-        const itemCountMap = new Map<string, { total: number; completed: number }>();
-        ((itemsData || []) as { event_id: string; is_completed: boolean }[]).forEach((it) => {
-          const current = itemCountMap.get(it.event_id) || { total: 0, completed: 0 };
+        const itemCountMap = new Map<string, { total: number; completed: number; assigned: number }>();
+        ((itemsData || []) as { event_id: string; is_completed: boolean; assignee_id: string | null }[]).forEach((it) => {
+          const current = itemCountMap.get(it.event_id) || { total: 0, completed: 0, assigned: 0 };
           current.total += 1;
           if (it.is_completed) current.completed += 1;
+          if (it.assignee_id === clerkUserId) current.assigned += 1;
           itemCountMap.set(it.event_id, current);
         });
 
-        const active: (Event & { itemCount: number; completedItemCount: number })[] = [];
-        const archived: (Event & { itemCount: number; completedItemCount: number })[] = [];
-        const completed: (Event & { itemCount: number; completedItemCount: number })[] = [];
+        const active: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[] = [];
+        const archived: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[] = [];
+        const completed: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[] = [];
 
         ((eventsData || []) as Event[]).forEach((evt) => {
-          const counts = itemCountMap.get(evt.id) || { total: 0, completed: 0 };
+          const counts = itemCountMap.get(evt.id) || { total: 0, completed: 0, assigned: 0 };
           const eventWithCounts = {
             ...evt,
             itemCount: counts.total,
             completedItemCount: counts.completed,
+            assignedItemCount: counts.assigned,
           };
 
           if (evt.status === 'completed') completed.push(eventWithCounts);
@@ -509,9 +511,9 @@ export class EventsRepository {
       }
     }
 
-    const active: (Event & { itemCount: number; completedItemCount: number })[] = [];
-    const archived: (Event & { itemCount: number; completedItemCount: number })[] = [];
-    const completed: (Event & { itemCount: number; completedItemCount: number })[] = [];
+    const active: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[] = [];
+    const archived: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[] = [];
+    const completed: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[] = [];
 
     for (const id of userEventIds) {
       const evt = memoryStore.events.get(id);
@@ -519,7 +521,8 @@ export class EventsRepository {
         const items = memoryStore.items.get(id) || [];
         const itemCount = items.length;
         const completedItemCount = items.filter((i) => i.is_completed).length;
-        const eventWithCounts = { ...evt, itemCount, completedItemCount };
+        const assignedItemCount = items.filter((i) => i.assignee_id === clerkUserId).length;
+        const eventWithCounts = { ...evt, itemCount, completedItemCount, assignedItemCount };
 
         if (evt.status === 'completed') completed.push(eventWithCounts);
         else if (evt.status === 'archived') archived.push(eventWithCounts);
