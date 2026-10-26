@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -137,6 +138,45 @@ export default function EventView({
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuContentRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState({
+    top: 12,
+    left: 12,
+    width: 224,
+    ready: false,
+  });
+
+  const updateMenuPosition = useCallback(() => {
+    const trigger = menuButtonRef.current;
+    const menu = menuContentRef.current;
+    if (!trigger || !menu) return;
+
+    const viewportPadding = 12;
+    const gap = 8;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(240, window.innerWidth - viewportPadding * 2);
+    const menuHeight = Math.min(
+      menu.scrollHeight,
+      window.innerHeight - viewportPadding * 2
+    );
+    const belowSpace = window.innerHeight - rect.bottom - gap - viewportPadding;
+    const aboveSpace = rect.top - gap - viewportPadding;
+    const openAbove = belowSpace < menuHeight && aboveSpace > belowSpace;
+
+    const top = openAbove
+      ? Math.max(viewportPadding, rect.top - menuHeight - gap)
+      : Math.min(
+          rect.bottom + gap,
+          window.innerHeight - menuHeight - viewportPadding
+        );
+    const left = Math.min(
+      window.innerWidth - width - viewportPadding,
+      Math.max(viewportPadding, rect.right - width)
+    );
+
+    setMenuPosition({ top, left, width, ready: true });
+  }, []);
 
   // Progressive disclosure quick-add active container ('unsectioned' or section ID)
   const [activeQuickAddSection, setActiveQuickAddSection] = useState<string | null>(null);
@@ -202,32 +242,51 @@ export default function EventView({
     setUnsectionedItems(initialUnsectionedItems || []);
   }, [initialEvent, initialMembers, initialActivities, initialSections, initialUnsectionedItems]);
 
-  // Outside click & Escape listener for trip actions menu
+  // Portaled action menu: position against the trigger and keep it within the viewport.
   useEffect(() => {
-    if (!isMenuOpen) return;
+    if (!isMenuOpen) {
+      setMenuPosition((current) => ({ ...current, ready: false }));
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      updateMenuPosition();
+      menuContentRef.current
+        ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
+        ?.focus();
+    });
+
+    const handleViewportChange = () => updateMenuPosition();
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
 
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setIsMenuOpen(false);
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || menuContentRef.current?.contains(target)) {
+        return;
       }
+      setIsMenuOpen(false);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsMenuOpen(false);
+        menuButtonRef.current?.focus();
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, updateMenuPosition]);
 
   // Auto-dismiss transient action errors after 6s
   useEffect(() => {
@@ -954,37 +1013,79 @@ export default function EventView({
               </Button>
             )}
 
-            {/* Overflow "⋯" menu */}
+            {/* Trigger stays in the header; the menu itself renders at document level. */}
             <div className="relative" ref={menuRef}>
               <button
+                ref={menuButtonRef}
                 type="button"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                onClick={() => setIsMenuOpen((open) => !open)}
                 aria-label="Trip actions menu"
-                aria-haspopup="true"
+                aria-haspopup="menu"
                 aria-expanded={isMenuOpen}
+                aria-controls="trip-actions-menu"
                 className="touch-target rounded-xl border border-white/20 bg-white/[.07] p-2 text-white transition-colors hover:bg-white/[.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d6ef9c] cursor-pointer"
               >
-                <MoreVertical className="w-4 h-4" />
+                <MoreVertical className="w-4 h-4" aria-hidden="true" />
               </button>
-
-              {isMenuOpen && (
+            </div>
+            {isMenuOpen &&
+              typeof document !== 'undefined' &&
+              createPortal(
                 <div
+                  id="trip-actions-menu"
+                  ref={menuContentRef}
                   role="menu"
+                  aria-label="Trip options"
                   aria-orientation="vertical"
-                  className="absolute right-0 mt-2 w-48 rounded-xl border border-canvas-border bg-white shadow-lg p-1.5 z-30 flex flex-col gap-1 text-xs"
+                  onKeyDown={(event) => {
+                    const items = Array.from(
+                      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                        '[role="menuitem"]:not(:disabled)'
+                      )
+                    );
+                    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+                    let nextIndex = currentIndex;
+
+                    if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
+                    else if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
+                    else if (event.key === 'Home') nextIndex = 0;
+                    else if (event.key === 'End') nextIndex = items.length - 1;
+                    else if (event.key === 'Tab') {
+                      setIsMenuOpen(false);
+                      return;
+                    } else {
+                      return;
+                    }
+
+                    event.preventDefault();
+                    items[nextIndex]?.focus();
+                  }}
+                  style={{
+                    position: 'fixed',
+                    top: menuPosition.top,
+                    left: menuPosition.left,
+                    width: menuPosition.width,
+                    maxHeight: 'calc(100dvh - 24px)',
+                    visibility: menuPosition.ready ? 'visible' : 'hidden',
+                  }}
+                  className="z-[100] flex flex-col gap-1 overflow-y-auto rounded-2xl border border-canvas-border bg-[#fffefa] p-1.5 text-sm text-ink shadow-[0_16px_48px_rgba(23,43,36,.2)] ring-1 ring-black/5"
                 >
                   {!isLocked && (
                     <>
                       <button
+                        role="menuitem"
+                        tabIndex={-1}
                         type="button"
                         onClick={handleOpenSaveTemplate}
                         disabled={totalItems === 0}
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center gap-2 disabled:opacity-50"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-canvas-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        <BookmarkPlus className="w-3.5 h-3.5 text-pine-600" />
+                        <BookmarkPlus className="h-4 w-4 shrink-0 text-pine-700" aria-hidden="true" />
                         <span>Save as Template</span>
                       </button>
                       <button
+                        role="menuitem"
+                        tabIndex={-1}
                         type="button"
                         onClick={handleOpenApplyTemplate}
                         disabled={hasExistingItemsOrCategories}
@@ -993,14 +1094,14 @@ export default function EventView({
                             ? 'Templates can only be applied to empty trips with no items or categories'
                             : 'Apply saved template'
                         }
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center justify-between disabled:opacity-45 disabled:cursor-not-allowed"
+                        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-left transition-colors hover:bg-canvas-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="flex items-center gap-3">
+                          <Sparkles className="h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
                           <span>Apply Template</span>
-                        </div>
+                        </span>
                         {hasExistingItemsOrCategories && (
-                          <span className="text-[10px] text-ink-muted bg-canvas-subtle px-1.5 py-0.5 rounded border border-canvas-border font-medium">
+                          <span className="shrink-0 rounded-md border border-canvas-border bg-canvas-subtle px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
                             Empty only
                           </span>
                         )}
@@ -1010,30 +1111,36 @@ export default function EventView({
 
                   {isOwner && !isLocked && (
                     <>
+                      <div role="separator" className="mx-2 my-1 h-px bg-canvas-border" />
                       <button
+                        role="menuitem"
+                        tabIndex={-1}
                         type="button"
                         onClick={handleArchiveToggle}
                         disabled={isArchiving}
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center gap-2"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-canvas-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 disabled:cursor-not-allowed disabled:opacity-45"
                       >
+                        <Layers className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
                         <span>{isArchived ? 'Restore Trip' : 'Archive Trip'}</span>
                       </button>
                       <button
+                        role="menuitem"
+                        tabIndex={-1}
                         type="button"
                         onClick={() => {
                           setIsCompleteModalOpen(true);
                           setIsMenuOpen(false);
                         }}
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-pine-50 text-pine-700 font-medium flex items-center gap-2"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-medium text-pine-800 transition-colors hover:bg-pine-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
                       >
-                        <PackageCheck className="w-3.5 h-3.5" />
+                        <PackageCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span>Wrap Up Trip</span>
                       </button>
                     </>
                   )}
-                </div>
+                </div>,
+                document.body
               )}
-            </div>
           </div>
         </div>
 
