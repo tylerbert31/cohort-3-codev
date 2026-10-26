@@ -144,6 +144,7 @@ export default function EventView({
     top: 12,
     left: 12,
     width: 224,
+    maxHeight: 320,
     ready: false,
   });
 
@@ -156,26 +157,28 @@ export default function EventView({
     const gap = 8;
     const rect = trigger.getBoundingClientRect();
     const width = Math.min(240, window.innerWidth - viewportPadding * 2);
-    const menuHeight = Math.min(
+    const viewportHeight = window.innerHeight;
+    const contentHeight = Math.min(
       menu.scrollHeight,
-      window.innerHeight - viewportPadding * 2
+      viewportHeight - viewportPadding * 2
     );
-    const belowSpace = window.innerHeight - rect.bottom - gap - viewportPadding;
-    const aboveSpace = rect.top - gap - viewportPadding;
-    const openAbove = belowSpace < menuHeight && aboveSpace > belowSpace;
-
+    const belowSpace = Math.max(
+      0,
+      viewportHeight - rect.bottom - gap - viewportPadding
+    );
+    const aboveSpace = Math.max(0, rect.top - gap - viewportPadding);
+    const openAbove = belowSpace < contentHeight && aboveSpace > belowSpace;
+    const availableSpace = openAbove ? aboveSpace : belowSpace;
+    const maxHeight = Math.max(1, Math.min(contentHeight, availableSpace));
     const top = openAbove
-      ? Math.max(viewportPadding, rect.top - menuHeight - gap)
-      : Math.min(
-          rect.bottom + gap,
-          window.innerHeight - menuHeight - viewportPadding
-        );
+      ? rect.top - gap - maxHeight
+      : rect.bottom + gap;
     const left = Math.min(
       window.innerWidth - width - viewportPadding,
       Math.max(viewportPadding, rect.right - width)
     );
 
-    setMenuPosition({ top, left, width, ready: true });
+    setMenuPosition({ top, left, width, maxHeight, ready: true });
   }, []);
 
   // Progressive disclosure quick-add active container ('unsectioned' or section ID)
@@ -1082,7 +1085,7 @@ export default function EventView({
                     top: menuPosition.top,
                     left: menuPosition.left,
                     width: menuPosition.width,
-                    maxHeight: 'calc(100dvh - 24px)',
+                    maxHeight: menuPosition.maxHeight,
                     visibility: menuPosition.ready ? 'visible' : 'hidden',
                   }}
                   className="z-[100] flex flex-col gap-1 overflow-y-auto rounded-2xl border border-canvas-border bg-[#fffefa] p-1.5 text-sm text-ink shadow-[0_16px_48px_rgba(23,43,36,.2)] ring-1 ring-black/5"
