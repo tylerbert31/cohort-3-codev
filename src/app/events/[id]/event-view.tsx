@@ -1015,22 +1015,28 @@ export default function EventView({
               </Button>
             )}
 
-            {/* Trigger stays in the header; the menu itself renders at document level. */}
-            <div className="relative" ref={menuRef}>
-              <button
-                ref={menuButtonRef}
-                type="button"
-                onClick={() => setIsMenuOpen((open) => !open)}
-                aria-label="Trip actions menu"
-                aria-haspopup="menu"
-                aria-expanded={isMenuOpen}
-                aria-controls="trip-actions-menu"
-                className="touch-target rounded-xl border border-white/20 bg-white/[.07] p-2 text-white transition-colors hover:bg-white/[.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d6ef9c] cursor-pointer"
-              >
-                <MoreVertical className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
+            {!isLocked && (
+              <>
+              {/* Trigger stays in the header; the menu itself renders at document level. */}
+              <div className="relative" ref={menuRef}>
+                <button
+                  ref={menuButtonRef}
+                  type="button"
+                  onClick={() => setIsMenuOpen((open) => !open)}
+                  aria-label="Trip actions menu"
+                  aria-haspopup="menu"
+                  aria-expanded={isMenuOpen}
+                  aria-controls="trip-actions-menu"
+                  className="touch-target rounded-xl border border-white/20 bg-white/[.07] p-2 text-white transition-colors hover:bg-white/[.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d6ef9c] cursor-pointer"
+                >
+                  <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                </button>
+              </div>
+  
+              </>
+            )}
             {isMenuOpen &&
+              !isLocked &&
               typeof document !== 'undefined' &&
               createPortal(
                 <div
@@ -1045,6 +1051,7 @@ export default function EventView({
                         '[role="menuitem"]:not(:disabled)'
                       )
                     );
+                    if (items.length === 0) return;
                     const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
                     let nextIndex = currentIndex;
 
