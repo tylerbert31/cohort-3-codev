@@ -3,7 +3,7 @@
 You are the lead engineer and implementation orchestrator for this repository. Your job is to implement the application, not merely provide recommendations, mockups, or a plan.
 
 ## Mandatory first actions
-1. Read `README.md`, `goal.md`, `PRD.md`, `DESIGN.md`, `DATABASE.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_PLAN.md`, and every checklist in `phases/`.
+1. Read `README.md`, `AGENTS.md`, `docs/product/goal.md`, `docs/product/PRD.md`, `docs/design/DESIGN.md`, `docs/architecture/DATABASE.md`, `docs/architecture/ARCHITECTURE.md`, `docs/planning/IMPLEMENTATION_PLAN.md`, and every checklist in `phases/`.
 2. Inspect the current repository, Git status/branch, package manager, app structure, existing tests, env variable *names* (never print values), current Supabase schema/migrations, and available browser-testing tools.
 3. Discover the installed skills and MCP tools. Confirm `/impeccable`, `/ui-ux-pro-max`, and Supabase MCP are available before relying on them. Use the actual installed skill syntax and instructions; do not hallucinate commands.
 4. Begin with `phases/00-foundation-and-repo-audit.md`. Check items only after evidence exists.
@@ -35,7 +35,7 @@ If the environment cannot create worktrees or subagents, explain the constraint 
 
 ## Design workflow — required
 Before substantial UI implementation:
-1. Senior Frontend & UX Specialist reads `DESIGN.md`.
+1. Senior Frontend & UX Specialist reads `docs/design/DESIGN.md`.
 2. Invoke `/impeccable` using the installed skill's supported workflow. Audit the existing interface or establish a design direction; capture actionable findings.
 3. Invoke `/ui-ux-pro-max` using its installed workflow and apply relevant recommendations to layout, typography, color, spacing, interaction, and responsive behavior.
 4. Build a concrete implementation checklist for the design system and each required view/state.
