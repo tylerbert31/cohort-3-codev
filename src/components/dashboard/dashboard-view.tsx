@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
   KeyRound,
   ChevronRight,
   CheckCircle2,
+  Backpack,
 } from 'lucide-react';
 import type { Event } from '@/types/database';
 
@@ -43,55 +45,31 @@ export function DashboardView() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Events grouped by status
-  const [eventsData, setEventsData] = useState<{
-    active: (Event & { itemCount: number; completedItemCount: number })[];
-    archived: (Event & { itemCount: number; completedItemCount: number })[];
-    completed: (Event & { itemCount: number; completedItemCount: number })[];
-  }>({
-    active: [],
-    archived: [],
-    completed: [],
-  });
-  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-
-  // Trusted profile synchronization on session load + fetch events
+  // Keep profile synchronization separate from cached trip-list queries.
   useEffect(() => {
-    let isMounted = true;
-
-    async function initDashboard() {
-      if (user?.id) {
-        try {
-          await syncUserProfile();
-        } catch (err) {
-          console.error('Background profile sync error:', err);
-        }
-
-        try {
-          const res = await listUserEventsAction();
-          if (isMounted && res.success && res.data) {
-            setEventsData(res.data);
-          }
-        } catch (err) {
-          console.error('Failed to load trips:', err);
-        }
-      }
-
-      if (isMounted) {
-        setIsLoadingEvents(false);
-      }
-    }
-
-    if (isLoaded) {
-      initDashboard();
-    }
-
-    return () => {
-      isMounted = false;
-    };
+    if (!isLoaded || !user?.id) return;
+    syncUserProfile().catch((err) => {
+      console.error('Background profile sync error:', err);
+    });
   }, [user?.id, isLoaded]);
 
-  const currentTabEvents = eventsData[activeTab];
+  const { data: eventsData, isLoading: isLoadingEvents, isError: isEventsError } = useQuery({
+    queryKey: ['user-events', user?.id],
+    queryFn: async () => {
+      const res = await listUserEventsAction();
+      if (!res.success || !res.data) {
+        throw new Error(res.error || 'Failed to load trips.');
+      }
+      return res.data;
+    },
+    enabled: isLoaded && Boolean(user?.id),
+  });
+
+  const tripsByStatus = eventsData ?? { active: [], completed: [], archived: [] };
+  const currentTabEvents = tripsByStatus[activeTab];
+  const totalAssignedItems = [...tripsByStatus.active, ...tripsByStatus.completed, ...tripsByStatus.archived]
+    .reduce((total, trip) => total + trip.assignedItemCount, 0);
+  const activeRequiredItems = tripsByStatus.active.reduce((total, trip) => total + trip.itemCount, 0);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,19 +171,33 @@ export function DashboardView() {
               </Button>
             </div>
           </div>
-          <div className="relative z-10 mt-7 grid grid-cols-3 border-t border-white/15 pt-4 sm:mt-8 sm:max-w-xl">
-            <div><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.active.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Active trips</p></div>
-            <div className="border-l border-white/15 pl-4"><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.completed.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Completed</p></div>
-            <div className="border-l border-white/15 pl-4"><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.archived.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Archived</p></div>
+          <div className="relative z-10 mt-5 flex items-center justify-between gap-3 rounded-2xl border border-white/15 bg-white/[.07] px-4 py-3 sm:mt-6 sm:max-w-xl">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#d6ef9c]/15 text-[#d6ef9c]">
+                <Backpack className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-[.12em] text-white/60">Assigned to you</p>
+                <p className="text-sm font-medium text-white">Your packing list</p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full border border-[#d6ef9c]/30 bg-[#d6ef9c]/15 px-3 py-1.5 text-sm font-semibold tabular-nums text-[#e5f5c8]">
+              {totalAssignedItems} {totalAssignedItems === 1 ? 'item' : 'items'}
+            </span>
+          </div>
+          <div className="relative z-10 mt-5 grid grid-cols-3 border-t border-white/15 pt-4 sm:mt-6 sm:max-w-xl">
+            <div><p className="text-2xl font-semibold tracking-[-.05em] text-white">{tripsByStatus.active.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Active trips</p></div>
+            <div className="border-l border-white/15 pl-4"><p className="text-2xl font-semibold tracking-[-.05em] text-white">{tripsByStatus.completed.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Completed</p></div>
+            <div className="border-l border-white/15 pl-4"><p className="text-2xl font-semibold tracking-[-.05em] text-white">{tripsByStatus.archived.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Archived</p></div>
           </div>
         </section>
 
         {/* Status Filter Tabs */}
         <Tabs
           tabs={[
-            { id: 'active', label: 'Active Trips', count: eventsData.active.length },
-            { id: 'completed', label: 'Past Logs', count: eventsData.completed.length },
-            { id: 'archived', label: 'Archived', count: eventsData.archived.length },
+            { id: 'active', label: 'Active Trips', count: tripsByStatus.active.length },
+            { id: 'completed', label: 'Past Logs', count: tripsByStatus.completed.length },
+            { id: 'archived', label: 'Archived', count: tripsByStatus.archived.length },
           ]}
           activeTab={activeTab}
           onChange={(id) => setActiveTab(id as 'active' | 'completed' | 'archived')}
@@ -213,8 +205,10 @@ export function DashboardView() {
         />
 
         {/* Trip Cards List */}
-        {isLoadingEvents ? (
+        {!isLoaded || isLoadingEvents ? (
           <LoadingSkeleton count={3} />
+        ) : isEventsError ? (
+          <InlineAlert type="error" message="Trips could not be loaded. Refresh the page to try again." />
         ) : currentTabEvents.length === 0 ? (
           <EmptyState
             title={`No ${activeTab === 'completed' ? 'past' : activeTab} trips`}
@@ -263,6 +257,18 @@ export function DashboardView() {
                       )}
                     </div>
                     <ChevronRight className="w-5 h-5 text-ink-subtle group-hover:text-ink group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-pine-200 bg-pine-50 px-2.5 py-1 text-[11px] font-semibold tracking-[.01em] text-pine-800">
+                      <Backpack className="h-3.5 w-3.5" aria-hidden="true" />
+                      {evt.itemCount} {evt.itemCount === 1 ? 'required item' : 'required items'}
+                    </span>
+                    {evt.assignedItemCount > 0 && (
+                      <span className="inline-flex items-center rounded-full border border-[#dcebb7] bg-[#f4f8e9] px-2.5 py-1 text-[11px] font-medium text-[#526b35]">
+                        {evt.assignedItemCount} for you
+                      </span>
+                    )}
                   </div>
 
                   {/* Progress Bar Display */}
