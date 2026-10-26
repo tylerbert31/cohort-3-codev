@@ -270,13 +270,6 @@ export default function EventView({
       setIsMenuOpen(false);
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsMenuOpen(false);
-        menuButtonRef.current?.focus();
-      }
-    };
-
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
 
@@ -286,7 +279,6 @@ export default function EventView({
       window.removeEventListener('scroll', handleViewportChange, true);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isMenuOpen, updateMenuPosition]);
 
