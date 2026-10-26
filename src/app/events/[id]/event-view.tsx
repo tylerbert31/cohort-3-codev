@@ -245,7 +245,9 @@ export default function EventView({
   // Portaled action menu: position against the trigger and keep it within the viewport.
   useEffect(() => {
     if (!isMenuOpen) {
-      setMenuPosition((current) => ({ ...current, ready: false }));
+      setMenuPosition((current) =>
+        current.ready ? { ...current, ready: false } : current
+      );
       return;
     }
 
@@ -1050,7 +1052,12 @@ export default function EventView({
                     else if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
                     else if (event.key === 'Home') nextIndex = 0;
                     else if (event.key === 'End') nextIndex = items.length - 1;
-                    else if (event.key === 'Tab') {
+                    else if (event.key === 'Escape') {
+                      event.preventDefault();
+                      setIsMenuOpen(false);
+                      menuButtonRef.current?.focus();
+                      return;
+                    } else if (event.key === 'Tab') {
                       setIsMenuOpen(false);
                       return;
                     } else {
