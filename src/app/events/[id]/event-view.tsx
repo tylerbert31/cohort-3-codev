@@ -797,14 +797,14 @@ export default function EventView({
         if (res.success && res.data) {
           setEvent(res.data);
           invalidateEventsList();
-        broadcastUpdate();
+          broadcastUpdate();
         }
       } else {
         const res = await archiveEventAction(event.id);
         if (res.success && res.data) {
           setEvent(res.data);
           invalidateEventsList();
-        broadcastUpdate();
+          broadcastUpdate();
         }
       }
     } catch {
