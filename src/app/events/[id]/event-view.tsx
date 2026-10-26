@@ -1679,9 +1679,11 @@ export default function EventView({
       )}
 
       {!isLocked && (
-        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)_+_6.25rem)] z-30 mx-auto max-w-sm sm:hidden">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)_+_6.25rem)] right-4 z-30 sm:hidden">
           <button
             type="button"
+            aria-label="Add item"
+            title="Add item"
             onClick={() => {
               setSelectedSectionId(null);
               setItemTitle('');
@@ -1691,10 +1693,9 @@ export default function EventView({
               setItemDeadline('');
               setIsAddItemOpen(true);
             }}
-            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pine-800 px-5 text-base font-semibold text-white shadow-[0_10px_28px_rgba(23,59,46,.24)] transition-colors hover:bg-pine-700 active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-2"
+            className="flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-pine-800 text-white shadow-[0_8px_24px_rgba(23,59,46,.28)] transition-[transform,background-color,box-shadow] duration-200 hover:bg-pine-700 hover:shadow-[0_12px_30px_rgba(23,59,46,.32)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-2"
           >
-            <Plus className="h-5 w-5" aria-hidden="true" />
-            Add item
+            <Plus className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
       )}
