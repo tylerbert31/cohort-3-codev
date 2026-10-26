@@ -257,12 +257,14 @@ export function DashboardView() {
                     <ChevronRight className="w-5 h-5 text-ink-subtle group-hover:text-ink group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-pine-200 bg-pine-50 px-2.5 py-1 text-[11px] font-semibold tracking-[.01em] text-pine-800">
-                      <Backpack className="h-3.5 w-3.5" aria-hidden="true" />
-                      {evt.assignedItemCount} {evt.assignedItemCount === 1 ? 'required item' : 'required items'}
-                    </span>
-                  </div>
+                  {evt.assignedItemCount > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-pine-200 bg-pine-50 px-2.5 py-1 text-[11px] font-semibold tracking-[.01em] text-pine-800">
+                        <Backpack className="h-3.5 w-3.5" aria-hidden="true" />
+                        {evt.assignedItemCount} {evt.assignedItemCount === 1 ? 'required item' : 'required items'}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Progress Bar Display */}
                   {hasItems ? (
