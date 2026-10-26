@@ -35,9 +35,9 @@ export default function SignUpPage() {
         <div className="w-12 h-12 rounded-xl bg-pine-600 text-white flex items-center justify-center mb-3">
           <Compass className="w-7 h-7 stroke-[1.75]" />
         </div>
-        <h1 className="text-3xl font-serif font-bold tracking-tight text-ink">cohort</h1>
+        <h1 className="text-3xl font-serif font-bold tracking-tight text-ink">WanderList</h1>
         <p className="text-sm text-ink-muted mt-1 max-w-xs">
-          Join cohort with Google to coordinate group gear, assign packing tasks, and manage expedition lists.
+          Join WanderList with Google to coordinate group gear, assign packing tasks, and manage expedition lists.
         </p>
       </div>
 
