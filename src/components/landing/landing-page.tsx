@@ -19,7 +19,7 @@ const demoItems = [
 ];
 
 const faqs = [
-  { q: 'Is Cohort just another checklist app?', a: 'No. Cohort is built around a trip and the people going on it. Everyone can see shared gear, who is bringing what, and what is still left to pack.' },
+  { q: 'Is WanderList just another checklist app?', a: 'No. WanderList is built around a trip and the people going on it. Everyone can see shared gear, who is bringing what, and what is still left to pack.' },
   { q: 'Can friends join without creating a trip?', a: 'Yes. A trip organizer can share an invite code or link. Guests sign in, join the private trip, and work from the same checklist.' },
   { q: 'What happens after a trip is complete?', a: 'Completed trips become read-only records, so the group can look back at what was packed without accidentally changing the final list.' },
 ];
@@ -46,12 +46,12 @@ export function LandingPageView() {
   return (
     <main className="min-h-screen overflow-hidden bg-canvas text-ink">
       <header className="relative z-30 mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
-        <Link href="/" className="group flex items-center gap-3" aria-label="Cohort home">
+        <Link href="/" className="group flex items-center gap-3" aria-label="WanderList home">
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ink text-pine-100 transition-transform group-hover:-rotate-6">
             <Compass className="h-5 w-5" strokeWidth={1.8} />
           </span>
           <span className="flex flex-col leading-none">
-            <span className="text-[23px] font-semibold tracking-[-.07em]">cohort<span className="text-pine-600">.</span></span>
+            <span className="text-[23px] font-semibold tracking-[-.07em]">WanderList<span className="text-pine-600">.</span></span>
             <span className="mt-1 font-mono text-[9px] uppercase tracking-[.2em] text-ink-subtle">Go together</span>
           </span>
         </Link>
@@ -166,7 +166,7 @@ export function LandingPageView() {
         <div className="max-w-md">
           <p className="font-mono text-[10px] uppercase tracking-[.2em] text-pine-700">The method / no. 01</p>
           <h2 className="mt-4 text-4xl font-semibold leading-[1.02] tracking-[-.065em] sm:text-5xl">Good trips start before you leave.</h2>
-          <p className="mt-5 text-sm leading-7 text-ink-muted">The group chat is for the jokes. Cohort keeps the plan, the responsibilities, and the last-minute details in one place.</p>
+          <p className="mt-5 text-sm leading-7 text-ink-muted">The group chat is for the jokes. WanderList keeps the plan, the responsibilities, and the last-minute details in one place.</p>
           <form onSubmit={submitInvite} className="mt-8 rounded-[22px] border border-canvas-border bg-white p-4 shadow-[0_8px_30px_rgba(23,43,36,.04)]">
             <label htmlFor="invite-code" className="mb-2 block font-mono text-[10px] uppercase tracking-[.16em] text-ink-muted">Already have an invite?</label>
             <div className="flex gap-2">
@@ -247,7 +247,7 @@ export function LandingPageView() {
         <div className="mx-auto flex max-w-7xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-pine-100"><Compass className="h-4 w-4" /></span>
-            <span><span className="block text-lg font-semibold tracking-[-.06em]">cohort<span className="text-pine-600">.</span></span><span className="block font-mono text-[9px] uppercase tracking-[.17em] text-ink-subtle">Make room for the good part</span></span>
+            <span><span className="block text-lg font-semibold tracking-[-.06em]">WanderList<span className="text-pine-600">.</span></span><span className="block font-mono text-[9px] uppercase tracking-[.17em] text-ink-subtle">Make room for the good part</span></span>
           </Link>
           <div className="flex flex-wrap items-center gap-5 text-xs font-medium text-ink-muted"><a href="#how-it-works" className="hover:text-ink">How it works</a><a href="#faq" className="hover:text-ink">FAQ</a><SignInButton mode="modal" fallbackRedirectUrl={resolveDynamicRedirectUrl('/', '/')} forceRedirectUrl={resolveDynamicRedirectUrl('/', '/')}><button className="inline-flex items-center gap-1 hover:text-ink">Get started <ArrowUpRight className="h-3.5 w-3.5" /></button></SignInButton></div>
           <p className="font-mono text-[10px] uppercase tracking-[.12em] text-ink-subtle">Made for the miles ahead.</p>
