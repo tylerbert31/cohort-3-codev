@@ -26,7 +26,6 @@ import {
   CheckCircle2,
   Backpack,
 } from 'lucide-react';
-import type { Event } from '@/types/database';
 
 export function DashboardView() {
   const router = useRouter();
@@ -69,7 +68,6 @@ export function DashboardView() {
   const currentTabEvents = tripsByStatus[activeTab];
   const totalAssignedItems = [...tripsByStatus.active, ...tripsByStatus.completed, ...tripsByStatus.archived]
     .reduce((total, trip) => total + trip.assignedItemCount, 0);
-  const activeRequiredItems = tripsByStatus.active.reduce((total, trip) => total + trip.itemCount, 0);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
