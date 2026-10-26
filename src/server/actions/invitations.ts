@@ -104,13 +104,17 @@ export async function joinEventAction(
       };
     }
 
-    const user = await currentUser();
-    if (user) {
+    try {
+      const user = await currentUser();
       await EventsRepository.upsertProfile({
         clerk_user_id: userId,
-        first_name: user.firstName,
-        last_name: user.lastName,
-        image_url: user.imageUrl,
+        first_name: user?.firstName || null,
+        last_name: user?.lastName || null,
+        image_url: user?.imageUrl || null,
+      });
+    } catch {
+      await EventsRepository.upsertProfile({
+        clerk_user_id: userId,
       });
     }
 

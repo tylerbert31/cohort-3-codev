@@ -84,6 +84,14 @@ function formatDisplayDate(dateStr?: string | null): string {
   return dateStr;
 }
 
+function getTodayDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatTripDateRange(startDate?: string | null, endDate?: string | null): string {
   if (!startDate && !endDate) return 'Dates TBD';
   if (startDate && !endDate) return formatDisplayDate(startDate);
@@ -190,6 +198,7 @@ export default function EventView({
     title: string;
     sectionId?: string | null;
   } | null>(null);
+  const todayDateString = getTodayDateString();
 
   // Forms
   const [sectionTitle, setSectionTitle] = useState('');
@@ -540,6 +549,11 @@ export default function EventView({
     e.preventDefault();
     if (!itemTitle.trim() || isLocked) return;
 
+    if (itemDeadline && itemDeadline < todayDateString) {
+      setActionError('Deadline cannot be in the past.');
+      return;
+    }
+
     setIsSubmittingItem(true);
     setActionError(null);
 
@@ -609,6 +623,15 @@ export default function EventView({
   const handleSaveEditItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem || !editTitle.trim() || isLocked) return;
+
+    if (
+      editDeadline &&
+      editDeadline < todayDateString &&
+      editDeadline !== editingItem.deadline?.split('T')[0]
+    ) {
+      setActionError('Deadline cannot be in the past.');
+      return;
+    }
 
     setIsSubmittingEditItem(true);
     setActionError(null);
@@ -1866,6 +1889,7 @@ export default function EventView({
               <input
                 id="item-deadline-input"
                 type="date"
+                min={todayDateString}
                 value={itemDeadline}
                 onChange={(e) => setItemDeadline(e.target.value)}
                 className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
@@ -1983,6 +2007,11 @@ export default function EventView({
                 <input
                   id="edit-item-deadline"
                   type="date"
+                  min={
+                    editingItem.deadline && editingItem.deadline.split('T')[0] < todayDateString
+                      ? editingItem.deadline.split('T')[0]
+                      : todayDateString
+                  }
                   value={editDeadline}
                   onChange={(e) => setEditDeadline(e.target.value)}
                   className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"

@@ -134,4 +134,21 @@ describe('Feature — Item Edit Popup & Deadline (Mobile & Desktop)', () => {
       ).rejects.toThrow('This event is completed and permanently locked against mutations.');
     });
   });
+  describe('Minimum Current Date UI Restriction', () => {
+    it('enforces min current date attribute on item deadline input and blocks past dates', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const viewCode = fs.readFileSync(
+        path.resolve(__dirname, '../src/app/events/[id]/event-view.tsx'),
+        'utf-8'
+      );
+
+      // Verify min attribute on item-deadline-input
+      expect(viewCode).toContain('id="item-deadline-input"');
+      expect(viewCode).toContain('min={todayDateString}');
+
+      // Verify validation check against past dates
+      expect(viewCode).toContain('Deadline cannot be in the past.');
+    });
+  });
 });
