@@ -18,7 +18,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'cohort — Make room for the good part',
+  title: 'WanderList — Make room for the good part',
   description: 'The shared trip checklist that keeps your people, gear, and plans moving together.',
   icons: { icon: '/favicon.ico' },
 };
