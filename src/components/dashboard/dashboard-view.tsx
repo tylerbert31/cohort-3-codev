@@ -260,13 +260,8 @@ export function DashboardView() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-pine-200 bg-pine-50 px-2.5 py-1 text-[11px] font-semibold tracking-[.01em] text-pine-800">
                       <Backpack className="h-3.5 w-3.5" aria-hidden="true" />
-                      {evt.itemCount} {evt.itemCount === 1 ? 'required item' : 'required items'}
+                      {evt.assignedItemCount} {evt.assignedItemCount === 1 ? 'required item' : 'required items'}
                     </span>
-                    {evt.assignedItemCount > 0 && (
-                      <span className="inline-flex items-center rounded-full border border-[#dcebb7] bg-[#f4f8e9] px-2.5 py-1 text-[11px] font-medium text-[#526b35]">
-                        {evt.assignedItemCount} for you
-                      </span>
-                    )}
                   </div>
 
                   {/* Progress Bar Display */}
