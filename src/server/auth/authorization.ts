@@ -11,7 +11,7 @@ export class AuthorizationError extends Error {
  * Asserts that an event is not in terminal completed state.
  * Completed events are permanently locked against any modifications.
  */
-export function assertEventNotCompleted(eventStatus: EventStatus): void {
+export function assertEventNotCompleted(eventStatus: EventStatus | string): void {
   if (eventStatus === 'completed') {
     throw new AuthorizationError(
       'This event is completed and permanently locked against mutations.',

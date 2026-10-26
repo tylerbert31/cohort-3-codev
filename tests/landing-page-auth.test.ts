@@ -55,18 +55,16 @@ describe('Landing Page & Public Route Access (Anti-Force-Login Protection)', () 
     const content = fs.readFileSync(landingComponentPath, 'utf-8');
 
     // Key conversion and UX elements
-    expect(content).toContain('No more forgotten stoves');
-    expect(content).toContain('Experience the Trailhead Field Log');
-    expect(content).toContain('Built for the trailhead, not the boardroom');
-    expect(content).toContain('Invited by a friend?');
-    expect(content).toContain('Frequently Asked Questions');
-    expect(content).toContain('Ready to coordinate your next adventure?');
+    expect(content).toContain('The best gear is the gear you remembered');
+    expect(content).toContain('More trail time. Less admin.');
+    expect(content).toContain('Already have an invite?');
+    expect(content).toContain('Field guide / FAQ');
+    expect(content).toContain('One shared plan for the people, the gear');
 
-    // Accessibility attributes
-    expect(content).toContain('min-h-[44px]');
-    expect(content).toContain('focus-visible:ring-2');
-    expect(content).toContain('role="banner"');
-    expect(content).toContain('role="contentinfo"');
-    expect(content).toContain('role="checkbox"');
+    // Accessibility and interaction attributes
+    expect(content).toContain('focus:ring-2');
+    expect(content).toContain('role="alert"');
+    expect(content).toContain('aria-label="Join trip with invite code"');
+    expect(content).toContain('aria-expanded={faqOpen === index}');
   });
 });

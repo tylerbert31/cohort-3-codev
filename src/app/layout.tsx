@@ -1,34 +1,29 @@
 import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { QueryProvider } from '@/lib/query-provider';
-import { Fraunces, Inter } from 'next/font/google';
+import { Outfit, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 
-const fraunces = Fraunces({
+const outfit = Outfit({
   subsets: ['latin'],
-  variable: '--font-fraunces',
+  variable: '--font-display',
   display: 'swap',
 });
 
-const inter = Inter({
+const plexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-mono-face',
+  weight: ['400', '500', '600'],
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'cohort · Expedition & Group Trip Packing',
-  description: 'Tactile, collaborative packing coordination for group adventures and expeditions.',
-  icons: {
-    icon: '/favicon.ico',
-  },
+  title: 'cohort — Make room for the good part',
+  description: 'The shared trip checklist that keeps your people, gear, and plans moving together.',
+  icons: { icon: '/favicon.ico' },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider
       allowedRedirectOrigins={[
@@ -42,22 +37,19 @@ export default function RootLayout({
       ]}
       appearance={{
         variables: {
-          colorPrimary: '#23523B',
-          colorBackground: '#FAF8F5',
-          borderRadius: '0.5rem',
+          colorPrimary: '#547a27',
+          colorBackground: '#fffefa',
+          borderRadius: '0.7rem',
         },
         elements: {
-          card: 'border border-canvas-border bg-white',
-          formButtonPrimary:
-            'bg-pine-600 hover:bg-pine-700 text-white min-h-[44px] transition-colors',
+          card: 'border border-canvas-border bg-white shadow-xl',
+          formButtonPrimary: 'bg-pine-600 hover:bg-pine-700 text-white min-h-[46px] transition-colors',
         },
       }}
     >
-      <html lang="en" className={`h-full ${fraunces.variable} ${inter.variable}`}>
+      <html lang="en" className={`h-full ${outfit.variable} ${plexMono.variable}`}>
         <body className="min-h-full flex flex-col font-sans bg-canvas text-ink antialiased">
-          <QueryProvider>
-            {children}
-          </QueryProvider>
+          <QueryProvider>{children}</QueryProvider>
         </body>
       </html>
     </ClerkProvider>

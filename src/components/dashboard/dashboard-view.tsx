@@ -166,40 +166,37 @@ export function DashboardView() {
         setIsCreateDialogOpen(true);
       }}
     >
-      <div className="space-y-6">
-        {/* Welcome Section */}
-        <section className="bg-canvas-card rounded-xl p-5 sm:p-6 border border-canvas-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-ink tracking-tight">
-              {user?.firstName ? `Welcome back, ${user.firstName}` : 'Expedition Hub'}
-            </h1>
-            <p className="text-sm text-ink-muted mt-1 max-w-md">
-              Coordinate group gear, assign packing tasks, and track readiness for your upcoming adventures.
-            </p>
+      <div className="space-y-7">
+        {/* Trip planning header */}
+        <section className="relative isolate overflow-hidden rounded-[28px] bg-[#173b2e] px-5 py-6 text-white shadow-[0_18px_45px_rgba(23,59,46,.15)] sm:px-8 sm:py-8">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 cohort-grid opacity-40" />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 z-0 h-64 w-64 rounded-full border border-white/10 sm:right-8 sm:top-[-7rem] sm:h-80 sm:w-80" />
+          <div aria-hidden="true" className="pointer-events-none absolute right-8 top-8 z-0 h-28 w-28 rounded-full border border-[#d6ef9c]/25 sm:right-24 sm:top-12 sm:h-40 sm:w-40" />
+          <div className="relative z-10 flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-xl">
+              <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.07] px-3 py-1.5 text-xs font-medium text-[#d8e9d0]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#d6ef9c]" /> Your shared trip space
+              </p>
+              <h1 className="max-w-lg text-[2.25rem] font-semibold leading-[.99] tracking-[-.065em] sm:text-5xl">
+                {user?.firstName ? <>Good to see you, <span className="text-[#d6ef9c]">{user.firstName}.</span></> : <>Make room for <span className="text-[#d6ef9c]">the outdoors.</span></>}
+              </h1>
+              <p className="mt-4 max-w-md text-sm leading-6 text-white/70 sm:text-[15px]">
+                One place for the plans, people, and packing lists that make a good trip happen.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-col sm:items-stretch sm:gap-2.5 sm:min-w-[180px]">
+              <Button variant="primary" onClick={() => { setCreateError(null); setIsCreateDialogOpen(true); }} className="min-h-12 justify-center border border-[#d6ef9c] bg-[#d6ef9c] text-[#173b2e] hover:bg-[#e4f6bc]">
+                <Plus className="mr-1.5 h-4 w-4" /> Plan a trip
+              </Button>
+              <Button variant="outline" onClick={() => { setJoinError(null); setIsJoinDialogOpen(true); }} className="min-h-12 justify-center border-white/25 bg-white/[.06] text-white hover:bg-white/[.12] hover:text-white">
+                <KeyRound className="mr-1.5 h-4 w-4" /> Join with code
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setJoinError(null);
-                setIsJoinDialogOpen(true);
-              }}
-            >
-              <KeyRound className="w-4 h-4 mr-1.5 text-pine-600" />
-              Join with Code
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setCreateError(null);
-                setIsCreateDialogOpen(true);
-              }}
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              New Trip
-            </Button>
+          <div className="relative z-10 mt-7 grid grid-cols-3 border-t border-white/15 pt-4 sm:mt-8 sm:max-w-xl">
+            <div><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.active.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Active trips</p></div>
+            <div className="border-l border-white/15 pl-4"><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.completed.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Completed</p></div>
+            <div className="border-l border-white/15 pl-4"><p className="text-2xl font-semibold tracking-[-.05em] text-white">{eventsData.archived.length}</p><p className="mt-1 text-[11px] text-white/60 sm:text-xs">Archived</p></div>
           </div>
         </section>
 
@@ -234,7 +231,7 @@ export function DashboardView() {
             onSecondaryAction={activeTab === 'active' ? () => setIsJoinDialogOpen(true) : undefined}
           />
         ) : (
-          <div className="grid grid-cols-1 gap-3.5">
+          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2 lg:gap-5">
             {currentTabEvents.map((evt) => {
               const isEventOwner = evt.owner_id === user?.id;
               const hasItems = evt.itemCount > 0;
@@ -244,12 +241,12 @@ export function DashboardView() {
                 <Link
                   key={evt.id}
                   href={`/events/${evt.id}`}
-                  className="group bg-canvas-card rounded-xl p-4 sm:p-5 border border-canvas-border hover:border-ink-subtle transition-all flex flex-col gap-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+                  className="group relative flex min-w-0 flex-col gap-4 overflow-hidden rounded-[22px] border border-canvas-border/90 bg-[#fffefa] p-4 shadow-[0_5px_18px_rgba(23,43,36,.025)] transition duration-200 hover:border-pine-500 hover:shadow-[0_14px_32px_rgba(23,43,36,.07)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:p-5"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h2 className="text-lg font-serif font-bold text-ink truncate group-hover:text-pine-700 transition-colors">
+                        <h2 className="break-words text-lg font-semibold leading-tight tracking-[-.04em] text-ink transition-colors group-hover:text-pine-700 sm:text-xl">
                           {evt.title}
                         </h2>
                         {evt.status === 'completed' && (
@@ -290,7 +287,7 @@ export function DashboardView() {
                   )}
 
                   {/* Metadata Row */}
-                  <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-ink-muted pt-2 border-t border-canvas-border/60">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-canvas-border/70 pt-3 text-xs leading-5 text-ink-muted">
                     {evt.location && (
                       <span className="flex items-center gap-1.5 font-medium">
                         <MapPin className="w-3.5 h-3.5 text-pine-600 shrink-0" />

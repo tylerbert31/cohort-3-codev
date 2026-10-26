@@ -7,6 +7,7 @@ export interface TabItem {
   id: string;
   label: string;
   count?: number;
+  mobileLabel?: string;
 }
 
 export interface TabsProps {
@@ -15,6 +16,7 @@ export interface TabsProps {
   onChange: (id: string) => void;
   className?: string;
   ariaLabel?: string;
+  variant?: 'underline' | 'segmented';
 }
 
 export const Tabs: React.FC<TabsProps> = ({
@@ -23,13 +25,17 @@ export const Tabs: React.FC<TabsProps> = ({
   onChange,
   className,
   ariaLabel = 'Navigation Tabs',
+  variant = 'underline',
 }) => {
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        'flex items-center gap-1 px-1 border-b border-canvas-border overflow-x-auto scrollbar-none select-none',
+        'select-none',
+        variant === 'segmented'
+          ? 'grid w-full grid-cols-3 items-stretch gap-1 rounded-xl border border-canvas-border/80 bg-canvas-subtle/75 p-1'
+          : 'flex items-center gap-1 overflow-x-auto border-b border-canvas-border px-1 scrollbar-none',
         className
       )}
     >
@@ -41,18 +47,52 @@ export const Tabs: React.FC<TabsProps> = ({
             role="tab"
             type="button"
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             aria-controls={`panel-${tab.id}`}
             id={`tab-${tab.id}`}
             onClick={() => onChange(tab.id)}
+            onKeyDown={(event) => {
+              const tabButtons = event.currentTarget
+                .closest('[role="tablist"]')
+                ?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+              if (!tabButtons?.length) return;
+
+              const currentIndex = Array.from(tabButtons).indexOf(event.currentTarget);
+              let nextIndex = currentIndex;
+
+              if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabButtons.length;
+              else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabButtons.length) % tabButtons.length;
+              else if (event.key === 'Home') nextIndex = 0;
+              else if (event.key === 'End') nextIndex = tabButtons.length - 1;
+              else return;
+
+              event.preventDefault();
+              const nextTab = tabButtons[nextIndex];
+              if (!nextTab) return;
+              nextTab.focus();
+              nextTab.click();
+            }}
             className={cn(
-              'min-h-[44px] px-3.5 py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 -mb-[1px] whitespace-nowrap shrink-0 flex items-center gap-1.5',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600',
-              isActive
-                ? 'border-pine-600 text-pine-700 font-semibold'
-                : 'border-transparent text-ink-muted hover:text-ink hover:border-canvas-muted'
+              'flex min-h-[44px] items-center gap-1.5 py-2 text-xs font-medium leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:text-sm',
+              variant === 'segmented'
+                ? 'min-w-0 justify-center rounded-lg px-1.5 sm:px-3'
+                : 'shrink-0 justify-start whitespace-nowrap border-b-2 -mb-[1px] px-3.5 sm:px-3.5',
+              variant === 'segmented'
+                ? cn(
+                    'rounded-lg border border-transparent',
+                    isActive
+                      ? 'border-white bg-[#fffefa] font-semibold text-ink shadow-[0_1px_3px_rgba(23,43,36,.08)]'
+                      : 'text-ink-muted hover:bg-white/60 hover:text-ink'
+                  )
+                : cn(
+                    isActive
+                      ? 'border-pine-600 font-semibold text-pine-700'
+                      : 'border-transparent text-ink-muted hover:border-canvas-muted hover:text-ink'
+                  )
             )}
           >
-            <span>{tab.label}</span>
+            <span className="truncate sm:hidden">{tab.mobileLabel ?? tab.label}</span>
+            <span className="hidden truncate sm:inline">{tab.label}</span>
             {typeof tab.count === 'number' && (
               <span
                 className={cn(

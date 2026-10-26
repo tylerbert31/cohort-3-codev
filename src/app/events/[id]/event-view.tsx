@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -83,6 +84,14 @@ function formatDisplayDate(dateStr?: string | null): string {
   return dateStr;
 }
 
+function getTodayDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatTripDateRange(startDate?: string | null, endDate?: string | null): string {
   if (!startDate && !endDate) return 'Dates TBD';
   if (startDate && !endDate) return formatDisplayDate(startDate);
@@ -137,6 +146,48 @@ export default function EventView({
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuContentRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState({
+    top: 12,
+    left: 12,
+    width: 224,
+    maxHeight: 320,
+    ready: false,
+  });
+
+  const updateMenuPosition = useCallback(() => {
+    const trigger = menuButtonRef.current;
+    const menu = menuContentRef.current;
+    if (!trigger || !menu) return;
+
+    const viewportPadding = 12;
+    const gap = 8;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(240, window.innerWidth - viewportPadding * 2);
+    const viewportHeight = window.innerHeight;
+    const contentHeight = Math.min(
+      menu.scrollHeight,
+      viewportHeight - viewportPadding * 2
+    );
+    const belowSpace = Math.max(
+      0,
+      viewportHeight - rect.bottom - gap - viewportPadding
+    );
+    const aboveSpace = Math.max(0, rect.top - gap - viewportPadding);
+    const openAbove = belowSpace < contentHeight && aboveSpace > belowSpace;
+    const availableSpace = openAbove ? aboveSpace : belowSpace;
+    const maxHeight = Math.max(1, Math.min(contentHeight, availableSpace));
+    const top = openAbove
+      ? rect.top - gap - maxHeight
+      : rect.bottom + gap;
+    const left = Math.min(
+      window.innerWidth - width - viewportPadding,
+      Math.max(viewportPadding, rect.right - width)
+    );
+
+    setMenuPosition({ top, left, width, maxHeight, ready: true });
+  }, []);
 
   // Progressive disclosure quick-add active container ('unsectioned' or section ID)
   const [activeQuickAddSection, setActiveQuickAddSection] = useState<string | null>(null);
@@ -147,6 +198,7 @@ export default function EventView({
     title: string;
     sectionId?: string | null;
   } | null>(null);
+  const todayDateString = getTodayDateString();
 
   // Forms
   const [sectionTitle, setSectionTitle] = useState('');
@@ -167,7 +219,6 @@ export default function EventView({
   const [isSubmittingEditItem, setIsSubmittingEditItem] = useState(false);
   const [isDeletingEditItem, setIsDeletingEditItem] = useState(false);
   const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
-  const [quickAddDirectTitle, setQuickAddDirectTitle] = useState('');
 
   // Template forms
   const [templateName, setTemplateName] = useState('');
@@ -203,32 +254,55 @@ export default function EventView({
     setUnsectionedItems(initialUnsectionedItems || []);
   }, [initialEvent, initialMembers, initialActivities, initialSections, initialUnsectionedItems]);
 
-  // Outside click & Escape listener for trip actions menu
+  // Portaled action menu: position against the trigger and keep it within the viewport.
   useEffect(() => {
-    if (!isMenuOpen) return;
+    if (!isMenuOpen) {
+      setMenuPosition((current) =>
+        current.ready ? { ...current, ready: false } : current
+      );
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      updateMenuPosition();
+    });
+
+    const handleViewportChange = () => updateMenuPosition();
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
 
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setIsMenuOpen(false);
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || menuContentRef.current?.contains(target)) {
+        return;
       }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsMenuOpen(false);
-      }
+      setIsMenuOpen(false);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, updateMenuPosition]);
+
+  // Focus a menu item only after the portal has been positioned and made visible.
+  useEffect(() => {
+    if (!isMenuOpen || !menuPosition.ready) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      menuContentRef.current
+        ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
+        ?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isMenuOpen, menuPosition.ready]);
 
   // Auto-dismiss transient action errors after 6s
   useEffect(() => {
@@ -391,35 +465,6 @@ export default function EventView({
     }
   };
 
-  const handleQuickAddDirect = async () => {
-    const title = quickAddDirectTitle.trim();
-    if (!title || isLocked) return;
-
-    setQuickAddDirectTitle('');
-
-    try {
-      const res = await createItemAction({
-        eventId: event.id,
-        section_id: null,
-        title,
-      });
-
-      if (res.success && res.data) {
-        const newItem = res.data;
-        const assignee = newItem.assignee_id
-          ? members.find((m) => m.clerk_user_id === newItem.assignee_id)?.profile || null
-          : null;
-
-        setUnsectionedItems((prev) => [...prev, { ...newItem, assignee }]);
-        broadcastUpdate();
-      } else {
-        setActionError(res.error || 'Failed to add item');
-      }
-    } catch {
-      setActionError('Failed to add item');
-    }
-  };
-
   const handleAddSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sectionTitle.trim() || isLocked) return;
@@ -504,6 +549,11 @@ export default function EventView({
     e.preventDefault();
     if (!itemTitle.trim() || isLocked) return;
 
+    if (itemDeadline && itemDeadline < todayDateString) {
+      setActionError('Deadline cannot be in the past.');
+      return;
+    }
+
     setIsSubmittingItem(true);
     setActionError(null);
 
@@ -573,6 +623,15 @@ export default function EventView({
   const handleSaveEditItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem || !editTitle.trim() || isLocked) return;
+
+    if (
+      editDeadline &&
+      editDeadline < todayDateString &&
+      editDeadline !== editingItem.deadline?.split('T')[0]
+    ) {
+      setActionError('Deadline cannot be in the past.');
+      return;
+    }
 
     setIsSubmittingEditItem(true);
     setActionError(null);
@@ -870,7 +929,7 @@ export default function EventView({
   });
 
   return (
-    <div className="space-y-6 pb-20 sm:pb-8">
+    <div className="space-y-5 pb-44 sm:space-y-6 sm:pb-8">
       {/* Back link + Status Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -934,29 +993,29 @@ export default function EventView({
       )}
 
       {/* Trip Hero Header Card */}
-      <div className="rounded-xl border border-canvas-border bg-canvas-card p-6 sm:p-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-2 flex-1">
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-ink">
+      <div className="overflow-hidden rounded-[26px] border border-canvas-border bg-[#fffefa] shadow-[0_12px_36px_rgba(23,43,36,.05)]">
+        <div className="relative isolate flex flex-col gap-5 overflow-hidden bg-[#173b2e] p-5 text-white sm:p-7 md:flex-row md:items-start md:justify-between cohort-grid">
+          <div className="relative z-10 min-w-0 flex-1 space-y-3">
+            <h1 className="max-w-3xl break-words text-[2rem] font-semibold leading-[1.02] tracking-[-.06em] text-white sm:text-4xl">
               {event.title}
             </h1>
             {event.description && (
-              <p className="text-sm text-ink-muted max-w-2xl leading-relaxed">
+              <p className="max-w-2xl text-sm leading-6 text-white/70 sm:text-[15px]">
                 {event.description}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-ink-muted">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pt-2 text-xs text-white/75">
               {event.location && (
                 <div className="flex items-center gap-1.5 font-medium">
-                  <MapPin className="h-4 w-4 text-pine-600 shrink-0" />
+                  <MapPin className="h-4 w-4 shrink-0 text-[#d6ef9c]" />
                   <span>{event.location}</span>
                 </div>
               )}
 
               {(event.start_date || event.end_date) && (
                 <div className="flex items-center gap-1.5 font-medium">
-                  <Calendar className="h-4 w-4 text-pine-600 shrink-0" />
+                  <Calendar className="h-4 w-4 shrink-0 text-[#d6ef9c]" />
                   <span>{formatTripDateRange(event.start_date, event.end_date)}</span>
                 </div>
               )}
@@ -971,7 +1030,7 @@ export default function EventView({
           </div>
 
           {/* Action cluster with overflow menu */}
-          <div className="flex items-center gap-2 pt-2 md:pt-0 shrink-0 relative">
+          <div className="relative z-10 flex shrink-0 items-center gap-2 pt-1 md:pt-0">
             {!isLocked && (
               <Button
                 variant="primary"
@@ -984,37 +1043,92 @@ export default function EventView({
               </Button>
             )}
 
-            {/* Overflow "⋯" menu */}
-            <div className="relative" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                aria-label="Trip actions menu"
-                aria-haspopup="true"
-                aria-expanded={isMenuOpen}
-                className="touch-target p-2 rounded-lg border border-canvas-border text-ink hover:bg-canvas-subtle transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
-
-              {isMenuOpen && (
+            {!isLocked && (
+              <>
+              {/* Trigger stays in the header; the menu itself renders at document level. */}
+              <div className="relative" ref={menuRef}>
+                <button
+                  ref={menuButtonRef}
+                  type="button"
+                  onClick={() => setIsMenuOpen((open) => !open)}
+                  aria-label="Trip actions menu"
+                  aria-haspopup="menu"
+                  aria-expanded={isMenuOpen}
+                  aria-controls="trip-actions-menu"
+                  className="touch-target rounded-xl border border-white/20 bg-white/[.07] p-2 text-white transition-colors hover:bg-white/[.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d6ef9c] cursor-pointer"
+                >
+                  <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                </button>
+              </div>
+  
+              </>
+            )}
+            {isMenuOpen &&
+              !isLocked &&
+              typeof document !== 'undefined' &&
+              createPortal(
                 <div
+                  id="trip-actions-menu"
+                  ref={menuContentRef}
                   role="menu"
+                  aria-label="Trip options"
                   aria-orientation="vertical"
-                  className="absolute right-0 mt-2 w-48 rounded-xl border border-canvas-border bg-white shadow-lg p-1.5 z-30 flex flex-col gap-1 text-xs"
+                  onKeyDown={(event) => {
+                    const items = Array.from(
+                      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                        '[role="menuitem"]:not(:disabled)'
+                      )
+                    );
+                    if (items.length === 0) return;
+                    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+                    let nextIndex = currentIndex;
+
+                    if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length;
+                    else if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length;
+                    else if (event.key === 'Home') nextIndex = 0;
+                    else if (event.key === 'End') nextIndex = items.length - 1;
+                    else if (event.key === 'Escape') {
+                      event.preventDefault();
+                      setIsMenuOpen(false);
+                      menuButtonRef.current?.focus();
+                      return;
+                    } else if (event.key === 'Tab') {
+                      setIsMenuOpen(false);
+                      menuButtonRef.current?.focus();
+                      return;
+                    } else {
+                      return;
+                    }
+
+                    event.preventDefault();
+                    items[nextIndex]?.focus();
+                  }}
+                  style={{
+                    position: 'fixed',
+                    top: menuPosition.top,
+                    left: menuPosition.left,
+                    width: menuPosition.width,
+                    maxHeight: menuPosition.maxHeight,
+                    visibility: menuPosition.ready ? 'visible' : 'hidden',
+                  }}
+                  className="z-[100] flex flex-col gap-1 overflow-y-auto rounded-2xl border border-canvas-border bg-[#fffefa] p-1.5 text-sm text-ink shadow-[0_16px_48px_rgba(23,43,36,.2)] ring-1 ring-black/5"
                 >
                   {!isLocked && (
                     <>
                       <button
+                        role="menuitem"
+                        tabIndex={-1}
                         type="button"
                         onClick={handleOpenSaveTemplate}
                         disabled={totalItems === 0}
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center gap-2 disabled:opacity-50"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-canvas-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        <BookmarkPlus className="w-3.5 h-3.5 text-pine-600" />
+                        <BookmarkPlus className="h-4 w-4 shrink-0 text-pine-700" aria-hidden="true" />
                         <span>Save as Template</span>
                       </button>
                       <button
+                        role="menuitem"
+                        tabIndex={-1}
                         type="button"
                         onClick={handleOpenApplyTemplate}
                         disabled={hasExistingItemsOrCategories}
@@ -1023,14 +1137,14 @@ export default function EventView({
                             ? 'Templates can only be applied to empty trips with no items or categories'
                             : 'Apply saved template'
                         }
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center justify-between disabled:opacity-45 disabled:cursor-not-allowed"
+                        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-left transition-colors hover:bg-canvas-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="flex items-center gap-3">
+                          <Sparkles className="h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
                           <span>Apply Template</span>
-                        </div>
+                        </span>
                         {hasExistingItemsOrCategories && (
-                          <span className="text-[10px] text-ink-muted bg-canvas-subtle px-1.5 py-0.5 rounded border border-canvas-border font-medium">
+                          <span className="shrink-0 rounded-md border border-canvas-border bg-canvas-subtle px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
                             Empty only
                           </span>
                         )}
@@ -1040,42 +1154,48 @@ export default function EventView({
 
                   {isOwner && !isLocked && (
                     <>
+                      <div role="separator" className="mx-2 my-1 h-px bg-canvas-border" />
                       <button
+                        role="menuitem"
+                        tabIndex={-1}
                         type="button"
                         onClick={handleArchiveToggle}
                         disabled={isArchiving}
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-canvas-subtle text-ink flex items-center gap-2"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-canvas-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 disabled:cursor-not-allowed disabled:opacity-45"
                       >
+                        <Layers className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
                         <span>{isArchived ? 'Restore Trip' : 'Archive Trip'}</span>
                       </button>
                       <button
+                        role="menuitem"
+                        tabIndex={-1}
                         type="button"
                         onClick={() => {
                           setIsCompleteModalOpen(true);
                           setIsMenuOpen(false);
                         }}
-                        className="w-full text-left px-3 py-2 rounded-md hover:bg-pine-50 text-pine-700 font-medium flex items-center gap-2"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-medium text-pine-800 transition-colors hover:bg-pine-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
                       >
-                        <PackageCheck className="w-3.5 h-3.5" />
+                        <PackageCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
                         <span>Wrap Up Trip</span>
                       </button>
                     </>
                   )}
-                </div>
+                </div>,
+                document.body
               )}
-            </div>
           </div>
         </div>
 
         {/* Global Progress Bar */}
-        <div className="mt-6 pt-6 border-t border-canvas-border">
-          <div className="flex items-center justify-between text-xs font-semibold text-ink mb-2">
+        <div className="border-t border-canvas-border p-5 sm:p-7">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-ink">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-pine-600" />
-              <span>Cohort Packing Progress</span>
+              <span>Packing progress</span>
             </span>
             <span className="font-mono">
-              {completedItems} of {totalItems} items packed ({overallProgressPct}%)
+              {completedItems}/{totalItems} packed · {overallProgressPct}%
             </span>
           </div>
           <Progress
@@ -1085,60 +1205,57 @@ export default function EventView({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="mt-6">
+        <div className="px-4 pb-4 pt-1 sm:px-7 sm:pb-6">
           <Tabs
             tabs={[
-              { id: 'checklist', label: 'Packing List', count: totalItems },
-              { id: 'members', label: 'Cohort Members', count: members.length },
-              { id: 'activity', label: 'Activity Feed', count: activities.length },
+              { id: 'checklist', label: 'Packing List', mobileLabel: 'List', count: totalItems },
+              { id: 'members', label: 'Cohort Members', mobileLabel: 'People', count: members.length },
+              { id: 'activity', label: 'Activity Feed', mobileLabel: 'Activity', count: activities.length },
             ]}
             activeTab={activeTab}
             onChange={(id) => setActiveTab(id as 'checklist' | 'members' | 'activity')}
             ariaLabel="Trip Details Navigation"
+            variant="segmented"
           />
         </div>
       </div>
 
       {/* Tab Panels */}
       {activeTab === 'checklist' && (
-        <div className="space-y-6">
+        <div id="panel-checklist" role="tabpanel" aria-labelledby="tab-checklist" tabIndex={0} className="space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:space-y-5">
           {/* Streamlined Mobile & Desktop Toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Segmented Filter Control */}
-            <div className="flex items-center p-1 bg-canvas-muted/60 rounded-xl border border-canvas-border/70 text-xs w-full sm:w-auto shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setFilterMode('all')}
-                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
-                  filterMode === 'all'
-                    ? 'bg-white text-ink shadow-xs font-semibold'
-                    : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                All ({totalItems})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('mine')}
-                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
-                  filterMode === 'mine'
-                    ? 'bg-white text-ink shadow-xs font-semibold'
-                    : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                Mine ({mineCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('unassigned')}
-                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg font-medium transition-all text-center ${
-                  filterMode === 'unassigned'
-                    ? 'bg-white text-ink shadow-xs font-semibold'
-                    : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                Unassigned ({unassignedCount})
-              </button>
+            <div role="group" aria-label="Filter checklist items" className="flex w-full items-center gap-2 overflow-x-auto py-0.5 scrollbar-none sm:w-auto">
+              {([
+                { id: 'all', label: 'All', count: totalItems },
+                { id: 'mine', label: 'Mine', count: mineCount },
+                { id: 'unassigned', label: 'Unassigned', count: unassignedCount },
+              ] as const).map((filter) => {
+                const selected = filterMode === filter.id;
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setFilterMode(filter.id)}
+                    className={cn(
+                      'inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-2 sm:gap-2 sm:px-3',
+                      selected
+                        ? 'border-pine-800 bg-pine-800 text-white shadow-sm'
+                        : 'border-canvas-border bg-[#fffefa] text-ink-muted hover:border-pine-500 hover:text-ink'
+                    )}
+                  >
+                    <span>{filter.label}</span>
+                    <span className={cn(
+                      'inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums',
+                      selected ? 'bg-white/15 text-white' : 'bg-canvas-subtle text-ink-muted'
+                    )}>
+                      {filter.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Compact Action Buttons */}
@@ -1151,7 +1268,7 @@ export default function EventView({
                     setSectionTitle('');
                     setIsAddSectionOpen(true);
                   }}
-                  className="gap-1.5 text-xs flex-1 sm:flex-initial h-9 font-medium"
+                  className="h-11 w-full justify-center text-sm font-medium sm:w-auto sm:justify-start"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add Category
@@ -1169,11 +1286,13 @@ export default function EventView({
                     setItemDeadline('');
                     setIsAddItemOpen(true);
                   }}
-                  className="gap-1.5 text-xs flex-1 sm:flex-initial h-9 font-medium"
+                  className="hidden h-11 justify-center text-sm font-medium sm:inline-flex"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Item
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Add item
                 </Button>
+
+
               </div>
             )}
           </div>
@@ -1245,39 +1364,20 @@ export default function EventView({
             <div className="space-y-6">
               {/* Direct Unsectioned Items Card */}
               {unsectionedItems.length > 0 && (
-                <div className="rounded-xl border border-canvas-border/80 bg-canvas-card p-3.5 sm:p-5 transition-all shadow-2xs">
+                <div className="overflow-hidden rounded-[20px] border border-canvas-border/80 bg-[#fffefa] p-4 sm:p-5">
                   {/* Card Header */}
-                  <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
-                    <div className="flex items-center gap-2">
-                      <PackageCheck className="w-4 h-4 text-pine-600" />
-                      <h2 className="text-base font-serif font-bold text-ink">
-                        {sections.length > 0 ? 'General Items (No Category)' : 'Checklist Items'}
+                  <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-canvas-border pb-3 sm:items-center">
+                    <div className="flex min-w-0 items-start gap-2">
+                      <PackageCheck aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-pine-700" />
+                      <h2 className="min-w-0 flex-1 break-words text-base font-semibold leading-snug tracking-[-.035em] text-ink sm:text-lg">
+                        {sections.length > 0 ? 'General items' : 'Checklist items'}
                       </h2>
-                      <span className="text-xs text-ink-muted font-mono">
-                        ({unsectionedItems.filter((i) => i.is_completed).length}/{unsectionedItems.length})
+                      <span className="shrink-0 rounded-full bg-canvas-subtle px-2 py-1 text-xs font-medium tabular-nums text-ink-muted">
+                        {unsectionedItems.filter((i) => i.is_completed).length} of {unsectionedItems.length}
                       </span>
                     </div>
 
-                    {!isLocked && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedSectionId(null);
-                          setItemTitle('');
-                          setItemQuantity('');
-                          setItemNotes('');
-                          setItemAssigneeId('');
-                          setItemDeadline('');
-                          setIsAddItemOpen(true);
-                        }}
-                        className="h-8 px-2.5 text-xs gap-1 text-ink-muted hover:text-pine-700"
-                        title="Add item with full specs"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-pine-600" />
-                        <span>Add Item</span>
-                      </Button>
-                    )}
+
                   </div>
 
                   {/* Items List */}
@@ -1288,7 +1388,7 @@ export default function EventView({
                         : `No direct items matching "${filterMode}".`}
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-0">
                       {filteredUnsectionedItems.map((item) => (
                         <ChecklistRow
                           key={item.id}
@@ -1313,84 +1413,7 @@ export default function EventView({
                     </div>
                   )}
 
-                  {/* Progressive Disclosure Quick Add */}
-                  {!isLocked && (
-                    <>
-                      {activeQuickAddSection === 'unsectioned' ? (
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            handleQuickAddDirect();
-                          }}
-                          className="mt-3 pt-3 border-t border-canvas-border/70 flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
-                        >
-                          <input
-                            type="text"
-                            autoFocus
-                            placeholder="Add gear item to General Items..."
-                            value={quickAddDirectTitle}
-                            onChange={(e) => setQuickAddDirectTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Escape') {
-                                setActiveQuickAddSection(null);
-                              }
-                            }}
-                            className="flex-1 bg-white px-3 py-2 text-sm rounded-lg border border-canvas-border focus:border-pine-600 focus:outline-none transition-colors text-ink placeholder:text-ink-muted/70"
-                          />
-                          <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedSectionId(null);
-                                setItemTitle(quickAddDirectTitle);
-                                setItemQuantity('');
-                                setItemNotes('');
-                                setItemAssigneeId('');
-                                setItemDeadline('');
-                                setIsAddItemOpen(true);
-                              }}
-                              className="text-xs text-ink-muted hover:text-ink h-9 px-2"
-                              title="Open full item specifications"
-                            >
-                              <span>Details...</span>
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setActiveQuickAddSection(null)}
-                              className="text-xs h-9 px-2.5"
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="submit"
-                              size="sm"
-                              variant="primary"
-                              disabled={!quickAddDirectTitle.trim()}
-                              className="text-xs h-9 px-3 gap-1 cursor-pointer"
-                              aria-label="Save item"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>Add</span>
-                            </Button>
-                          </div>
-                        </form>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setActiveQuickAddSection('unsectioned')}
-                          className="w-full mt-3 py-2 px-3 rounded-lg border border-dashed border-canvas-border/80 text-xs font-medium text-ink-muted hover:text-pine-700 hover:border-pine-300 hover:bg-pine-50/50 transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-pine-600" />
-                          <span>Add item to General Items...</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
+                                  </div>
               )}
 
               {/* Categorized Sections List */}
@@ -1408,51 +1431,31 @@ export default function EventView({
                 return (
                   <div
                     key={section.id}
-                    className="rounded-xl border border-canvas-border/80 bg-canvas-card p-3.5 sm:p-5 transition-all shadow-2xs"
+                    className="overflow-hidden rounded-[20px] border border-canvas-border/80 bg-[#fffefa] p-4 sm:p-5"
                   >
                     {/* Section Header */}
-                    <div className="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-canvas-border">
-                      <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-pine-600" />
-                        <h2 className="text-base font-serif font-bold text-ink">
+                    <div className="mb-3 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-canvas-border pb-3 sm:items-center">
+                      <div className="flex min-w-0 items-start gap-2">
+                        <Layers aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-pine-700" />
+                        <h2 className="min-w-0 break-words text-base font-semibold leading-snug tracking-[-.035em] text-ink sm:text-lg">
                           {section.title}
                         </h2>
-                        <span className="text-xs text-ink-muted font-mono">
-                          ({secCompleted}/{secTotal})
+                        <span className="shrink-0 rounded-full bg-canvas-subtle px-2 py-1 text-xs font-medium tabular-nums text-ink-muted">
+                          {secCompleted} of {secTotal}
                         </span>
                       </div>
 
-                      {!isLocked && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedSectionId(section.id);
-                              setItemTitle('');
-                              setItemQuantity('');
-                              setItemNotes('');
-                              setItemAssigneeId('');
-                              setItemDeadline('');
-                              setIsAddItemOpen(true);
-                            }}
-                            className="h-8 px-2 text-xs gap-1 text-ink-muted hover:text-pine-700"
-                            title="Add item with full specs"
-                          >
-                            <Plus className="w-3.5 h-3.5 text-pine-600" />
-                            <span>Add Item</span>
-                          </Button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDeleteSection(section)}
-                            aria-label={`Remove category ${section.title}`}
-                            title="Remove Category"
-                            className="touch-target p-2 rounded-lg text-ink-muted hover:text-terracotta-600 hover:bg-terracotta-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                      {!isLocked && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDeleteSection(section)}
+                          aria-label={`Remove ${section.title} category`}
+                          title="Remove category"
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink-subtle transition-colors hover:bg-terracotta-50 hover:text-terracotta-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600"
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
                       )}
                     </div>
 
@@ -1464,7 +1467,7 @@ export default function EventView({
                           : `No items matching "${filterMode}" in this category.`}
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-0">
                         {filteredItems.map((item) => (
                           <ChecklistRow
                             key={item.id}
@@ -1563,10 +1566,9 @@ export default function EventView({
                           <button
                             type="button"
                             onClick={() => setActiveQuickAddSection(section.id)}
-                            className="w-full mt-3 py-2 px-3 rounded-lg border border-dashed border-canvas-border/80 text-xs font-medium text-ink-muted hover:text-pine-700 hover:border-pine-300 hover:bg-pine-50/50 transition-all flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
+                            className="mt-3 inline-flex min-h-11 w-full items-center justify-start rounded-lg border-t border-canvas-border/70 px-2 py-2 text-sm font-medium text-pine-800 transition-colors hover:bg-pine-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 cursor-pointer"
                           >
-                            <Plus className="w-3.5 h-3.5 text-pine-600" />
-                            <span>Add item to {section.title}...</span>
+                            <span>Add an item</span>
                           </button>
                         )}
                       </>
@@ -1581,8 +1583,8 @@ export default function EventView({
 
       {/* Cohort Members Tab */}
       {activeTab === 'members' && (
-        <div className="rounded-xl border border-canvas-border bg-canvas-card p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div id="panel-members" role="tabpanel" aria-labelledby="tab-members" tabIndex={0} className="rounded-[24px] border border-canvas-border bg-[#fffefa] p-5 shadow-[0_8px_28px_rgba(23,43,36,.04)] outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:p-7">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-serif font-bold text-ink">Expedition Cohort</h2>
               <p className="text-xs text-ink-muted">Friends and travelers sharing this packing list.</p>
@@ -1639,8 +1641,8 @@ export default function EventView({
 
       {/* Activity Log Tab */}
       {activeTab === 'activity' && (
-        <div className="rounded-xl border border-canvas-border bg-canvas-card p-6">
-          <h2 className="text-base font-serif font-bold text-ink mb-1">Trip Timeline</h2>
+        <div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" tabIndex={0} className="rounded-[24px] border border-canvas-border bg-[#fffefa] p-5 shadow-[0_8px_28px_rgba(23,43,36,.04)] outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:p-7">
+          <h2 className="mb-1 text-xl font-semibold tracking-[-.04em] text-ink">Trip Timeline</h2>
           <p className="text-xs text-ink-muted mb-5">Audit trail of group updates and packing progress.</p>
           {activities.length === 0 ? (
             <p className="text-sm text-ink-muted italic">No recorded activity yet.</p>
@@ -1673,6 +1675,27 @@ export default function EventView({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {!isLocked && (
+        <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)_+_6.25rem)] z-30 mx-auto max-w-sm sm:hidden">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSectionId(null);
+              setItemTitle('');
+              setItemQuantity('');
+              setItemNotes('');
+              setItemAssigneeId('');
+              setItemDeadline('');
+              setIsAddItemOpen(true);
+            }}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pine-800 px-5 text-base font-semibold text-white shadow-[0_10px_28px_rgba(23,59,46,.24)] transition-colors hover:bg-pine-700 active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine-600 focus-visible:ring-offset-2"
+          >
+            <Plus className="h-5 w-5" aria-hidden="true" />
+            Add item
+          </button>
         </div>
       )}
 
@@ -1866,6 +1889,7 @@ export default function EventView({
               <input
                 id="item-deadline-input"
                 type="date"
+                min={todayDateString}
                 value={itemDeadline}
                 onChange={(e) => setItemDeadline(e.target.value)}
                 className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
@@ -1983,6 +2007,11 @@ export default function EventView({
                 <input
                   id="edit-item-deadline"
                   type="date"
+                  min={
+                    editingItem.deadline && editingItem.deadline.split('T')[0] < todayDateString
+                      ? editingItem.deadline.split('T')[0]
+                      : todayDateString
+                  }
                   value={editDeadline}
                   onChange={(e) => setEditDeadline(e.target.value)}
                   className="w-full rounded-lg border border-canvas-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-pine-600"
