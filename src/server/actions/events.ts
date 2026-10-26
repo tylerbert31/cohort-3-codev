@@ -93,9 +93,9 @@ export async function getEventDetailsAction(eventId: string): Promise<
  */
 export async function listUserEventsAction(): Promise<
   ActionResponse<{
-    active: (Event & { itemCount: number; completedItemCount: number })[];
-    archived: (Event & { itemCount: number; completedItemCount: number })[];
-    completed: (Event & { itemCount: number; completedItemCount: number })[];
+    active: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
+    archived: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
+    completed: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
   }>
 > {
   try {
