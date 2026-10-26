@@ -1,5 +1,6 @@
 'use client';
 
+import { useUser } from '@clerk/nextjs';
 import {
   useQuery,
   useMutation,
@@ -71,31 +72,51 @@ export const queryKeys = {
 // ============================================================================
 
 export interface UserEventsData {
-  active: (Event & { itemCount: number; completedItemCount: number })[];
-  archived: (Event & { itemCount: number; completedItemCount: number })[];
-  completed: (Event & { itemCount: number; completedItemCount: number })[];
+  active: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
+  archived: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
+  completed: (Event & { itemCount: number; completedItemCount: number; assignedItemCount: number })[];
 }
 
 /**
- * Fetches the user's active, archived, and completed outings with automatic polling and error handling.
+ * Fetches the signed-in user's trip list with a user-scoped cache key, immediate
+ * refresh when the homepage is revisited, focus/reconnect refetching, and polling.
+ *
+ * The server action derives the actual user from the authenticated server session;
+ * the Clerk user ID here scopes client cache entries so accounts never share list data.
  */
+export function useEventsList(options?: {
+  pollingInterval?: number;
+  enabled?: boolean;
+}): UseQueryResult<UserEventsData, Error> {
+  const { user, isLoaded } = useUser();
+  const userId = user?.id;
+
+  return useQuery<UserEventsData, Error>({
+    queryKey: [...queryKeys.events.list(), userId ?? 'signed-out'],
+    queryFn: async () => {
+      const res = await listUserEventsAction();
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fetch trips.');
+      }
+      return res.data;
+    },
+    enabled: isLoaded && Boolean(userId) && (options?.enabled ?? true),
+    // Never trust the previous visit's list for the initial view after navigation.
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: options?.pollingInterval ?? 10_000,
+    refetchIntervalInBackground: false,
+  });
+}
+
+/** Backwards-compatible alias for existing consumers. */
 export function useUserEventsQuery(options?: {
   pollingInterval?: number;
   enabled?: boolean;
 }): UseQueryResult<UserEventsData, Error> {
-  return useQuery<UserEventsData, Error>({
-    queryKey: queryKeys.events.list(),
-    queryFn: async () => {
-      const res = await listUserEventsAction();
-      if (!res.success) {
-        throw new Error(res.error || 'Failed to fetch outings.');
-      }
-      return res.data;
-    },
-    enabled: options?.enabled ?? true,
-    refetchInterval: options?.pollingInterval ?? 15_000,
-    refetchIntervalInBackground: false,
-  });
+  return useEventsList(options);
 }
 
 export interface EventDetailsData {

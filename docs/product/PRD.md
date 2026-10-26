@@ -5,7 +5,7 @@ A collaborative outing and packing checklist app. Authenticated users create pri
 
 ## 2. User types
 - **Signed-in user:** can create events, manage events they own, participate in events they joined, maintain personal templates, and view their own profile.
-- **Event owner/authorized manager:** can manage event settings and invitations, subject to the permission model defined in `DATABASE.md`.
+- **Event owner/authorized manager:** can manage event settings and invitations, subject to the permission model defined in `docs/architecture/DATABASE.md`.
 - **Event participant:** can view and update allowed checklist data for events they belong to, unless the event is completed/locked.
 - **Unauthenticated visitor:** can only access public sign-in/onboarding surfaces. An invite link must not reveal private event data before authentication and membership validation.
 

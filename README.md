@@ -270,10 +270,17 @@ src/
   types/               TypeScript database and domain types
 supabase/
   migrations/          Ordered SQL schema and database changes
-phases/                Implementation phase checklists
+docs/
+  product/              Product goals, PRD, and product overview
+  architecture/         Architecture and database design
+  design/               Design specifications and UX checklists
+  planning/             Implementation plan and Antigravity prompt
+  operations/           Deployment and operations guide
+  archive/              Legacy phase checklist drafts retained for history
+phases/                 Current implementation phase checklists
 ```
 
-Some additional planning documents may be present at the repository root. See [Project planning documents](#project-planning-documents).
+Project documentation is organized under [`docs/`](docs/README.md). Keep `README.md` and `AGENTS.md` at the repository root for onboarding and repository-wide agent instructions.
 
 ## Security notes
 

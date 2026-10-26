@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,8 @@ import { Progress } from '@/components/ui/progress';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { EmptyState, LoadingSkeleton } from '@/components/ui/state-views';
 import { syncUserProfile } from '@/server/actions/profile';
-import { createEventAction, listUserEventsAction } from '@/server/actions/events';
+import { createEventAction } from '@/server/actions/events';
+import { useEventsList } from '@/query';
 import { joinEventAction } from '@/server/actions/invitations';
 import {
   Calendar,
@@ -52,17 +52,12 @@ export function DashboardView() {
     });
   }, [user?.id, isLoaded]);
 
-  const { data: eventsData, isLoading: isLoadingEvents, isError: isEventsError } = useQuery({
-    queryKey: ['user-events', user?.id],
-    queryFn: async () => {
-      const res = await listUserEventsAction();
-      if (!res.success || !res.data) {
-        throw new Error(res.error || 'Failed to load trips.');
-      }
-      return res.data;
-    },
-    enabled: isLoaded && Boolean(user?.id),
-  });
+  const {
+    data: eventsData,
+    isLoading: isLoadingEvents,
+    isError: isEventsError,
+    error: eventsError,
+  } = useEventsList();
 
   const tripsByStatus = eventsData ?? { active: [], completed: [], archived: [] };
   const currentTabEvents = tripsByStatus[activeTab];
@@ -202,11 +197,21 @@ export function DashboardView() {
           ariaLabel="Trip Status Filters"
         />
 
+        {isEventsError && eventsData && (
+          <InlineAlert
+            type="error"
+            message="Could not refresh your trips. Showing the last loaded data; we will retry automatically."
+          />
+        )}
+
         {/* Trip Cards List */}
         {!isLoaded || isLoadingEvents ? (
           <LoadingSkeleton count={3} />
-        ) : isEventsError ? (
-          <InlineAlert type="error" message="Trips could not be loaded. Refresh the page to try again." />
+        ) : isEventsError && !eventsData ? (
+          <InlineAlert
+            type="error"
+            message={eventsError instanceof Error ? eventsError.message : 'Trips could not be loaded. Please try again.'}
+          />
         ) : currentTabEvents.length === 0 ? (
           <EmptyState
             title={`No ${activeTab === 'completed' ? 'past' : activeTab} trips`}

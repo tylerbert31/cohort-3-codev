@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/query';
 import type {
   Event,
   EventMember,
@@ -119,6 +121,11 @@ export default function EventView({
   currentUserId,
 }: EventViewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const invalidateEventsList = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.events.list() });
+  }, [queryClient]);
+
   const [event, setEvent] = useState<Event>(initialEvent);
   const [members, setMembers] = useState(initialMembers);
   const [activities, setActivities] = useState(initialActivities);
@@ -323,12 +330,13 @@ export default function EventView({
         setActivities(res.data.activities);
         setSections(res.data.sections);
         setUnsectionedItems(res.data.unsectionedItems);
+        invalidateEventsList();
       }
     } catch (err) {
       console.error('Failed to refresh event data:', err);
     }
     router.refresh();
-  }, [event.id, router]);
+  }, [event.id, invalidateEventsList, router]);
 
   // Realtime subscription (WebSockets + BroadcastChannel)
   const { status: realtimeStatus, broadcastUpdate } = useEventRealtime({
@@ -390,6 +398,7 @@ export default function EventView({
         setActionError(res.error || 'Failed to update item status');
         refreshEventData();
       } else {
+        invalidateEventsList();
         broadcastUpdate();
       }
     } catch {
@@ -423,6 +432,7 @@ export default function EventView({
         setActionError(res.error || 'Failed to delete item');
         refreshEventData();
       } else {
+        invalidateEventsList();
         broadcastUpdate();
       }
     } catch {
@@ -456,6 +466,7 @@ export default function EventView({
             sec.id === sectionId ? { ...sec, items: [...sec.items, { ...newItem, assignee }] } : sec
           )
         );
+        invalidateEventsList();
         broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to add item');
@@ -534,6 +545,7 @@ export default function EventView({
         }
 
         handleCloseDeleteSection();
+        invalidateEventsList();
         broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to remove category');
@@ -592,6 +604,7 @@ export default function EventView({
         setItemAssigneeId('');
         setItemDeadline('');
         setIsAddItemOpen(false);
+        invalidateEventsList();
         broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to add item');
@@ -707,6 +720,7 @@ export default function EventView({
         }
 
         handleCloseEditItem();
+        invalidateEventsList();
         broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to update item');
@@ -782,12 +796,14 @@ export default function EventView({
         const res = await restoreEventAction(event.id);
         if (res.success && res.data) {
           setEvent(res.data);
+          invalidateEventsList();
           broadcastUpdate();
         }
       } else {
         const res = await archiveEventAction(event.id);
         if (res.success && res.data) {
           setEvent(res.data);
+          invalidateEventsList();
           broadcastUpdate();
         }
       }
@@ -809,6 +825,7 @@ export default function EventView({
       if (res.success && res.data) {
         setEvent(res.data);
         setIsCompleteModalOpen(false);
+        invalidateEventsList();
         broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to wrap up trip');
@@ -901,6 +918,7 @@ export default function EventView({
       if (res.success) {
         setIsApplyTemplateOpen(false);
         await refreshEventData();
+        invalidateEventsList();
         broadcastUpdate();
       } else {
         setActionError(res.error || 'Failed to apply template');

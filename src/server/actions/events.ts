@@ -104,16 +104,6 @@ export async function listUserEventsAction(): Promise<
       return { success: false, error: 'Authentication required.', code: 'UNAUTHORIZED' };
     }
 
-    const user = await currentUser();
-    if (user) {
-      await EventsRepository.upsertProfile({
-        clerk_user_id: userId,
-        first_name: user.firstName,
-        last_name: user.lastName,
-        image_url: user.imageUrl,
-      });
-    }
-
     const result = await EventsRepository.listEventsForUser(userId);
     return { success: true, data: result };
   } catch (err: unknown) {

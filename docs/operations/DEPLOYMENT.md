@@ -43,7 +43,7 @@ The application requires the following environment variables across all staging 
 AWS Amplify Hosting natively supports Next.js App Router applications with Server-Side Rendering (SSR).
 
 ### Build Specification (`amplify.yml`)
-The repository includes [`amplify.yml`](./amplify.yml):
+The repository includes [`amplify.yml`](../../amplify.yml):
 ```yaml
 version: 1
 frontend:
