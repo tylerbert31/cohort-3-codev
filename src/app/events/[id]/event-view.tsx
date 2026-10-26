@@ -253,9 +253,6 @@ export default function EventView({
 
     const frame = window.requestAnimationFrame(() => {
       updateMenuPosition();
-      menuContentRef.current
-        ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
-        ?.focus();
     });
 
     const handleViewportChange = () => updateMenuPosition();
@@ -281,6 +278,19 @@ export default function EventView({
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [isMenuOpen, updateMenuPosition]);
+
+  // Focus a menu item only after the portal has been positioned and made visible.
+  useEffect(() => {
+    if (!isMenuOpen || !menuPosition.ready) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      menuContentRef.current
+        ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
+        ?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isMenuOpen, menuPosition.ready]);
 
   // Auto-dismiss transient action errors after 6s
   useEffect(() => {
