@@ -135,3 +135,15 @@ Use these as usability constraints and inspiration, not as templates to copy:
 - [ ] Verify tabs at 320 px with two-digit counts, long trip/category/item names, the full item form and section quick-add workflows, and completed/locked trips.
 - [ ] Verify add/edit/assign/complete/delete item workflows, delete category behavior, and live/realtime updates still work.
 - [ ] Recheck keyboard navigation, focus visibility, screen-reader names, and color contrast after running the app.
+
+
+## 8. Event options popup clipping fix — October 26, 2026
+
+- [x] Replaced the card-relative, absolutely positioned options list with a body-level React portal so the menu escapes the trip hero card's `overflow-hidden` boundary and local stacking context.
+- [x] Use fixed viewport coordinates anchored to the options trigger; clamp the menu horizontally within the viewport, flip above the trigger when there is insufficient room below, and limit its height with internal scrolling.
+- [x] Reposition on viewport resize and scroll, including scrolling ancestors.
+- [x] Preserve the existing Save as Template, Apply Template, Archive/Restore, and Wrap Up actions and their existing disabled/role restrictions.
+- [x] Add menu and menuitem semantics, descriptive labels, keyboard navigation with Up/Down/Home/End, Escape close and focus restoration, click-outside dismissal, and Tab dismissal.
+- [x] Hide the options trigger on completed/locked trips where no options are available.
+- [ ] Browser-verify near the top/bottom of the viewport, in the narrow mobile layout, and while the page is scrolled; verify the popup overlays cards and bottom navigation without clipping.
+- [ ] Run lint, typecheck, tests, and production build.
