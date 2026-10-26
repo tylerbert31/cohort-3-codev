@@ -1066,6 +1066,7 @@ export default function EventView({
                       return;
                     } else if (event.key === 'Tab') {
                       setIsMenuOpen(false);
+                      menuButtonRef.current?.focus();
                       return;
                     } else {
                       return;
