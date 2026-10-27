@@ -1,4 +1,4 @@
-# Design System: cohort ("Trailhead Field Notes")
+# Design System: WanderList ("Trailhead Field Notes")
 
 ## 1. Visual Direction & Archetype
 - **Archetype:** Trailhead Field Notes — Tactile, warm, dependable, outdoor expedition coordinator.
