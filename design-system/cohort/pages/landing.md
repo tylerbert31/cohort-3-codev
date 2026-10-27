@@ -1,11 +1,11 @@
-# Landing Page Specification: cohort
+# Landing Page Specification: WanderList
 
 ## 1. Page Purpose
 - Enable unauthenticated visitors to explore the platform, understand the core value proposition of collaborative trip packing, interact with a live tactile field notes preview, enter invite codes, and sign in without being force-redirected.
 
 ## 2. Information Architecture & Section Hierarchy
 1. **Top Navigation Header:**
-   - Brand lockup: `cohort` wordmark with Compass icon.
+   - Brand lockup: `WanderList` wordmark with Compass icon.
    - Desktop anchor links: Features, Interactive Demo, How It Works, Templates.
    - Secondary action: "Have an Invite Code?"
    - Primary actions: "Sign In" (modal trigger) and "Start a Trip" button.

@@ -87,12 +87,12 @@ export function LandingPageView() {
       )}
 
       <section className="px-4 pb-16 pt-3 sm:px-8 sm:pb-24 lg:px-10">
-        <div className="cohort-grain relative mx-auto max-w-7xl overflow-hidden rounded-[30px] bg-[#172b24] text-[#f3f3ed] sm:rounded-[38px]">
-          <div className="cohort-grid absolute inset-0 opacity-50" aria-hidden="true" />
+        <div className="wanderlist-grain relative mx-auto max-w-7xl overflow-hidden rounded-[30px] bg-[#172b24] text-[#f3f3ed] sm:rounded-[38px]">
+          <div className="wanderlist-grid absolute inset-0 opacity-50" aria-hidden="true" />
           <div className="absolute -right-24 -top-32 h-[420px] w-[420px] rounded-full border border-white/10 sm:h-[620px] sm:w-[620px]" aria-hidden="true" />
           <div className="absolute -right-8 -top-16 h-[300px] w-[300px] rounded-full border border-white/10 sm:h-[480px] sm:w-[480px]" aria-hidden="true" />
           <div className="relative grid min-h-[590px] items-center gap-12 px-6 py-12 sm:px-10 sm:py-16 lg:min-h-[650px] lg:grid-cols-[1.05fr_.95fr] lg:gap-5 lg:px-16 lg:py-20">
-            <div className="cohort-enter relative z-10 max-w-[610px]">
+            <div className="wanderlist-enter relative z-10 max-w-[610px]">
               <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[.07] px-3.5 py-2 font-mono text-[10px] uppercase tracking-[.16em] text-[#d7efaa]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#b5e46a] shadow-[0_0_12px_#b5e46a]" />
                 Built for the whole crew
@@ -120,7 +120,7 @@ export function LandingPageView() {
               </div>
             </div>
 
-            <div className="cohort-enter-delay relative mx-auto w-full max-w-[490px] lg:ml-auto lg:mr-0">
+            <div className="wanderlist-enter-delay relative mx-auto w-full max-w-[490px] lg:ml-auto lg:mr-0">
               <div className="absolute -right-2 top-5 z-20 hidden -rotate-6 rounded-xl bg-[#f4d9a2] px-4 py-3 text-[#3b3528] shadow-xl sm:block">
                 <span className="block font-mono text-[9px] uppercase tracking-[.17em] opacity-60">Crew status</span>
                 <span className="mt-1 block text-sm font-semibold">Almost trail-ready</span>
@@ -216,7 +216,7 @@ export function LandingPageView() {
           </div>
           <div className="relative flex min-h-[300px] items-end overflow-hidden bg-[#243b2f] p-7 text-white sm:min-h-[420px] sm:p-10">
             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(ellipse at 70% 25%, #b5e46a 0, transparent 28%), linear-gradient(155deg, transparent 35%, #0c1b14 35.2%, #0c1b14 49%, transparent 49.2%), linear-gradient(25deg, transparent 40%, #5c7a4c 40.2%, #5c7a4c 58%, transparent 58.2%)' }} />
-            <div className="absolute inset-0 cohort-grid opacity-20" />
+            <div className="absolute inset-0 wanderlist-grid opacity-20" />
             <div className="relative max-w-md">
               <Flame className="mb-5 h-7 w-7 text-[#b5e46a]" />
               <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#b5e46a]">A better kind of together</p>

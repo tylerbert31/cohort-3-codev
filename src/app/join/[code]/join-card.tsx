@@ -83,7 +83,7 @@ export default function JoinCard({ inviteCode }: JoinCardProps) {
           Expedition Invitation
         </h1>
         <p className="mt-2 text-sm text-ink-muted leading-relaxed">
-          You have been invited to join an expedition cohort and collaborate on a shared packing checklist.
+          You have been invited to join this trip and collaborate on a shared packing checklist.
         </p>
 
         <div className="mt-4 rounded-lg bg-canvas-subtle px-3.5 py-1.5 font-mono text-sm tracking-wider font-semibold text-pine-700 border border-canvas-border">

@@ -1,14 +1,14 @@
-# Product Overview: cohort
+# Product Overview: WanderList
 
 ## 1. Product Truth
-- **Name:** cohort
+- **Name:** WanderList
 - **Core Purpose:** A collaborative expedition and group trip packing coordinator. Enables friends, campers, travelers, and groups to organize gear, split packing responsibilities, track group prep in real-time, and preserve memories of past adventures.
 - **Audience:** Friends, outdoors lovers, festival-goers, camping groups, and family trip planners who need clear coordination without bloated project-management tooling.
 - **Key Metaphor:** "Trailhead Field Notes" — tactile, organized, dependable, warm logbook feel.
 - **Key Terminology:**
   - **Trip:** An adventure or gathering (replaces "event" and "outing" in user-facing UI).
   - **Packing List / Gear:** Organized items grouped into sections/categories.
-  - **Cohort / Members:** The group of friends traveling and packing together.
+  - **Members:** The people invited to collaborate on a trip.
   - **Wrap Up / Completed:** When packing is finished and the trip departs, locking the list into a permanent logbook record.
 
 ## 2. Surfaces & Modes

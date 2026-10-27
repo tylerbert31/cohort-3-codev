@@ -1012,7 +1012,7 @@ export default function EventView({
 
       {/* Trip Hero Header Card */}
       <div className="overflow-hidden rounded-[26px] border border-canvas-border bg-[#fffefa] shadow-[0_12px_36px_rgba(23,43,36,.05)]">
-        <div className="relative isolate flex flex-col gap-5 overflow-hidden bg-[#173b2e] p-5 text-white sm:p-7 md:flex-row md:items-start md:justify-between cohort-grid">
+        <div className="relative isolate flex flex-col gap-5 overflow-hidden bg-[#173b2e] p-5 text-white sm:p-7 md:flex-row md:items-start md:justify-between wanderlist-grid">
           <div className="relative z-10 min-w-0 flex-1 space-y-3">
             <h1 className="max-w-3xl break-words text-[2rem] font-semibold leading-[1.02] tracking-[-.06em] text-white sm:text-4xl">
               {event.title}
@@ -1041,7 +1041,7 @@ export default function EventView({
               <div className="flex items-center gap-2">
                 <AvatarStack avatars={avatarItems} max={3} size="sm" />
                 <span className="font-medium">
-                  {members.length} {members.length === 1 ? 'member' : 'in cohort'}
+                  {members.length} {members.length === 1 ? 'member' : 'members'}
                 </span>
               </div>
             </div>
@@ -1227,7 +1227,7 @@ export default function EventView({
           <Tabs
             tabs={[
               { id: 'checklist', label: 'Packing List', mobileLabel: 'List', count: totalItems },
-              { id: 'members', label: 'Cohort Members', mobileLabel: 'People', count: members.length },
+              { id: 'members', label: 'Members', mobileLabel: 'People', count: members.length },
               { id: 'activity', label: 'Activity Feed', mobileLabel: 'Activity', count: activities.length },
             ]}
             activeTab={activeTab}
@@ -1315,7 +1315,7 @@ export default function EventView({
             )}
           </div>
 
-          {/* Celebratory Milestone: 100% Cohort Readiness */}
+          {/* Celebratory Milestone: 100% Trip Readiness */}
           {overallProgressPct === 100 && totalItems > 0 && !isLocked && (
             <div className="rounded-xl border border-pine-300 bg-linear-to-r from-pine-50 via-white to-pine-50/80 p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -1325,7 +1325,7 @@ export default function EventView({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-serif font-bold text-ink text-sm sm:text-base">
-                      Cohort Ready for Departure! 🏕️
+                      Ready for the Trip!
                     </h3>
                     <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-pine-600 text-white font-mono">
                       100% Packed
@@ -1599,12 +1599,12 @@ export default function EventView({
         </div>
       )}
 
-      {/* Cohort Members Tab */}
+      {/* Members Tab */}
       {activeTab === 'members' && (
         <div id="panel-members" role="tabpanel" aria-labelledby="tab-members" tabIndex={0} className="rounded-[24px] border border-canvas-border bg-[#fffefa] p-5 shadow-[0_8px_28px_rgba(23,43,36,.04)] outline-none focus-visible:ring-2 focus-visible:ring-pine-600 sm:p-7">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-serif font-bold text-ink">Expedition Cohort</h2>
+              <h2 className="text-base font-serif font-bold text-ink">Members</h2>
               <p className="text-xs text-ink-muted">Friends and travelers sharing this packing list.</p>
             </div>
             {!isLocked && (
@@ -1674,7 +1674,7 @@ export default function EventView({
                   <div>
                     <p className="text-sm font-medium text-ink">
                       {a.event_type === 'event_created' && 'Trip created'}
-                      {a.event_type === 'member_joined' && 'New participant joined cohort'}
+                      {a.event_type === 'member_joined' && 'New member joined the trip'}
                       {a.event_type === 'section_created' && 'Packing category added'}
                       {a.event_type === 'item_created' && 'Item added to packing list'}
                       {a.event_type === 'item_completed' && 'Item packed & checked off'}
@@ -2242,7 +2242,7 @@ export default function EventView({
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
         title="Invite Trip Collaborators"
-        description="Share this secure 8-character code or direct join link with your cohort."
+        description="Share this secure 8-character code or direct join link with your group."
       >
         <div className="space-y-5">
           {isGeneratingInvite ? (
@@ -2254,7 +2254,7 @@ export default function EventView({
             <>
               <div className="rounded-xl border border-pine-200 bg-pine-50 p-4 text-center">
                 <span className="text-xs font-semibold uppercase tracking-wider text-pine-700">
-                  Cohort Invite Code
+                  Trip Invite Code
                 </span>
                 <div className="mt-1 font-mono text-3xl font-bold tracking-widest text-pine-800">
                   {inviteCode}
@@ -2320,7 +2320,7 @@ export default function EventView({
               <span className="font-mono font-bold">{completedItems} of {totalItems} items ({overallProgressPct}%)</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-ink-muted">Cohort size:</span>
+              <span className="text-ink-muted">Members:</span>
               <span className="font-mono font-bold">{members.length} members</span>
             </div>
             <p className="pt-2 text-ink-muted text-xs border-t border-canvas-border/60">
@@ -2362,7 +2362,7 @@ export default function EventView({
         {itemToDelete && (
           <div className="space-y-4 py-1">
             <p className="text-xs text-ink-muted leading-relaxed">
-              This will remove this gear item from the checklist for all expedition members. You can re-add it at any time.
+              This will remove this gear item from the checklist for all trip members. You can re-add it at any time.
             </p>
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-canvas-border">
               <Button

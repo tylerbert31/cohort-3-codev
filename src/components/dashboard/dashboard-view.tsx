@@ -140,7 +140,7 @@ export function DashboardView() {
       <div className="space-y-7">
         {/* Trip planning header */}
         <section className="relative isolate overflow-hidden rounded-[28px] bg-[#173b2e] px-5 py-6 text-white shadow-[0_18px_45px_rgba(23,59,46,.15)] sm:px-8 sm:py-8">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 cohort-grid opacity-40" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 wanderlist-grid opacity-40" />
           <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 z-0 h-64 w-64 rounded-full border border-white/10 sm:right-8 sm:top-[-7rem] sm:h-80 sm:w-80" />
           <div aria-hidden="true" className="pointer-events-none absolute right-8 top-8 z-0 h-28 w-28 rounded-full border border-[#d6ef9c]/25 sm:right-24 sm:top-12 sm:h-40 sm:w-40" />
           <div className="relative z-10 flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between">
