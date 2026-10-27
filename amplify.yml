@@ -4,6 +4,29 @@ frontend:
     preBuild:
       commands:
         - npm ci --cache .npm --prefer-offline
+        - |
+          set -eu
+          required_env_vars="
+          SUPABASE_SERVICE_ROLE_KEY
+          NEXT_PUBLIC_SUPABASE_ANON_KEY
+          NEXT_PUBLIC_SUPABASE_URL
+          CLERK_SECRET_KEY
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+          "
+          for name in $required_env_vars; do
+            if [ -z "$(printenv "$name" || true)" ]; then
+              echo "Missing required Amplify environment variable: $name" >&2
+              exit 1
+            fi
+          done
+          umask 077
+          {
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SUPABASE_SERVICE_ROLE_KEY"
+            printf 'NEXT_PUBLIC_SUPABASE_ANON_KEY=%s\n' "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$NEXT_PUBLIC_SUPABASE_URL"
+            printf 'CLERK_SECRET_KEY=%s\n' "$CLERK_SECRET_KEY"
+            printf 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=%s\n' "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+          } > .env.production
     build:
       commands:
         - npm run typecheck
